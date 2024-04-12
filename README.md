@@ -23,3 +23,10 @@ wow，看到里面的正是自己想要了解学习的内容，一下子打起�
 记录的笔记我就留在个人博客上了，因为用的notion写博客，试试推送很方便，所以习惯了：
 
 [Rust基础积累---常更](https://liamy.clovy.top/article/OS_Tutorial/rust_learn)
+
+## Day5-? 2024/4/8-?
+
+### 事件：学习riscV（这个部分会迭代更新）
+
+参考资料（放在reference dir）： [RISC-V手册](http://riscvbook.com/chinese/RISC-V-Reader-Chinese-v2p1.pdf)
+
