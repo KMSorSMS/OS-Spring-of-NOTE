@@ -9,7 +9,14 @@ KERNEL_ENTRY := 0x80200000
 
 OBJDUMP := rust-objdump
 OBJCOPY := rust-objcopy
-
+ifeq ($(strip $(MODE)),release)
+    # 如果 MODE 是 release，执行这里的代码
+    MODE_ARG := --release
+else
+    # 如果 MODE 不是 release，执行这里的代码
+    MODE_ARG :=
+endif
+# MODE_ARG := --$(MODE)
 
 build: env $(KERNEL_BIN)
 
@@ -24,7 +31,7 @@ $(KERNEL_BIN): kernel
 	$(OBJCOPY) $(KERNEL_ELF) --strip-all -O binary $@
 
 kernel:
-	cargo build --$(MODE)
+	cargo build $(MODE_ARG)
 
 clean:
 	@cargo clean
@@ -58,6 +65,7 @@ gdbserver: build
 	-s -S
 gdbclient: build
 	gdb-multiarch -ex 'file  $(KERNEL_ELF)' -ex 'set arch riscv:rv64' -ex 'target extended-remote localhost:1234'
-
+disasmview: build
+	rust-objdump -S target/riscv64gc-unknown-none-elf/$(MODE)/os
 
 .PHONY: build run clean gdbserver gdbclient env run-inner
