@@ -24,9 +24,27 @@ wow，看到里面的正是自己想要了解学习的内容，一下子打起�
 
 [Rust基础积累---常更](https://liamy.clovy.top/article/OS_Tutorial/rust_learn)
 
-## Day5-? 2024/4/8-?
+## Day5 2024/4/13
 
 ### 事件：学习riscV（这个部分会迭代更新）
 
-参考资料（放在reference dir）： [RISC-V手册](http://riscvbook.com/chinese/RISC-V-Reader-Chinese-v2p1.pdf)
+参考资料（放在reference dir）： [RISC-V手册](http://riscvbook.com/chinese/RISC-V-Reader-Chinese-v1.pdf)（训练营给的版本老了点）
+
+### 事件：lab1半完成（读完了）
+
+学了一点ANSI转义序列，还有bss清零的骚操作（直接用rust写而不是之前用汇编完成）
+
+还有调用rustsbi接口实现打印（不过这里感觉还没看的很仔细），
+
+今天参加成电杯足球赛去了，做的不多（最近也在忙着复习操作系统半期考试😥）
+
+## Day6 2024/4/14
+
+### 事件：看并发 ch8部分
+
+因为想和我们学校半期考试复习结合，所以就跳着先看看这里的并发（chapter8）
+
+peterson算法感觉tutorial讲的少了点手动，建议是看看南大jyy的OS课里面讲的
+
+详细笔记我归在lab部分博客了：
 
