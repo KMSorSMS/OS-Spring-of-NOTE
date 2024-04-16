@@ -14,7 +14,7 @@ ifeq ($(strip $(MODE)),release)
     MODE_ARG := --release
 else
     # 如果 MODE 不是 release，执行这里的代码
-    MODE_ARG :=
+    MODE_ARG := 
 endif
 # MODE_ARG := --$(MODE)
 
@@ -31,6 +31,7 @@ $(KERNEL_BIN): kernel
 	$(OBJCOPY) $(KERNEL_ELF) --strip-all -O binary $@
 
 kernel:
+	@echo Mode is now $(MODE_ARG)
 	cargo build $(MODE_ARG)
 
 clean:
@@ -45,7 +46,10 @@ run-inner: build
 	-bios $(BOOTLOADER) \
 	-device loader,file=$(KERNEL_BIN),addr=$(KERNEL_ENTRY)
 
-debug: build
+changeEnv:
+	$(eval MODE_ARG = )
+
+debug: changeEnv build
 	tmux new-session -d \
 	"qemu-system-riscv64 \
 	-machine virt \
@@ -66,6 +70,6 @@ gdbserver: build
 gdbclient: build
 	gdb-multiarch -ex 'file  $(KERNEL_ELF)' -ex 'set arch riscv:rv64' -ex 'target extended-remote localhost:1234'
 disasmview: build
-	rust-objdump -S target/riscv64gc-unknown-none-elf/$(MODE)/os
+	rust-objdump -S target/riscv64gc-unknown-none-elf/$(MODE)/os | less
 
-.PHONY: build run clean gdbserver gdbclient env run-inner
+.PHONY: build run clean gdbserver gdbclient env run-inner disasmview

@@ -46,5 +46,12 @@ wow，看到里面的正是自己想要了解学习的内容，一下子打起�
 
 peterson算法感觉tutorial讲的少了点手动，建议是看看南大jyy的OS课里面讲的
 
-详细笔记我归在lab部分博客了：
+详细笔记我归在lab部分博客了：[lab1 blog](https://liamy.clovy.top/article/OS_Tutorial/lab1)
 
+## Day7 2024/4/15
+
+### 事件：lab1敲一遍
+
+这个lab1没有需要写的部分，主要是把一些基本内容学习，跟着敲一遍做好笔记就好了。
+
+[lab1 blog](https://liamy.clovy.top/article/OS_Tutorial/lab1)
