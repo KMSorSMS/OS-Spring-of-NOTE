@@ -70,6 +70,6 @@ gdbserver: build
 gdbclient: build
 	gdb-multiarch -ex 'file  $(KERNEL_ELF)' -ex 'set arch riscv:rv64' -ex 'target extended-remote localhost:1234'
 disasmview: build
-	rust-objdump -S target/riscv64gc-unknown-none-elf/$(MODE)/os | vim -
+	rust-objdump -S target/riscv64gc-unknown-none-elf/$(MODE)/os | less
 
 .PHONY: build run clean gdbserver gdbclient env run-inner disasmview

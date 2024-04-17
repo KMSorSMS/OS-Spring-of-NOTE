@@ -6,12 +6,11 @@
 #![no_main]
 #![feature(panic_info_message)]
 
-
 use core::arch::global_asm;
 #[macro_use]
 mod console;
 mod lang_items;
-mod  sbi;
+mod sbi;
 
 // const SYSCALL_EXIT: usize = 93;
 
@@ -68,7 +67,21 @@ mod  sbi;
 
 /// the rust entry-point of os
 #[no_mangle]
-pub fn rust_main()  {
+pub fn rust_main() {
+    // unsafe {
+    //     core::arch::asm!(
+    //         "li a0, 100", // Load immediate
+    //         "add a1, a0, a0", // Addition
+    //         "sub a2, a0, a1", // Subtraction
+    //         "mul a3, a0, a1", // Multiplication
+    //         "div a4, a0, a1", // Division
+    //         out("a0") _,
+    //         out("a1") _,
+    //         out("a2") _,
+    //         out("a3") _,
+    //         out("a4") _,
+    //     );
+    // }
     clear_bss();
     println!("hello");
     sbi::shutdown();
