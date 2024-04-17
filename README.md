@@ -55,3 +55,15 @@ peterson算法感觉tutorial讲的少了点手动，建议是看看南大jyy的O
 这个lab1没有需要写的部分，主要是把一些基本内容学习，跟着敲一遍做好笔记就好了。
 
 [lab1 blog](https://liamy.clovy.top/article/OS_Tutorial/lab1)
+
+## Day8 2024/4/16
+
+### 事件：lab1 finish
+
+看了lab2 的前两个小节，重新去认识了链接脚本里面的细节（Entry的作用、如何保证的_start在第一个位置等）收藏一个回答：[Entry的作用](https://stackoverflow.com/questions/40606700/what-does-entry-mean-in-a-linker-script)
+
+
+
+## Day9 2024/4/17
+
+有个[incorrect usage of slice::from_raw_parts](https://doc.rust-lang.org/beta/core/slice/fn.from_raw_parts.html#incorrect-usage) 
