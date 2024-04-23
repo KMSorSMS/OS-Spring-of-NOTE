@@ -3,15 +3,15 @@ use alloc::sync::Arc;
 use core::fmt::{self, Write};
 use spin::mutex::Mutex;
 
-const CONSOLE_BUFFER_SIZE: usize = 256 * 10;
-
 pub const STDIN: usize = 0;
 pub const STDOUT: usize = 1;
 
-struct ConsoleBuffer(VecDeque<u8>);
-use super::write;
+const CONSOLE_BUFFER_SIZE: usize = 256 * 10;
+
+use super::{read, write};
 use lazy_static::*;
 
+struct ConsoleBuffer(VecDeque<u8>);
 
 lazy_static! {
     static ref CONSOLE_BUFFER: Arc<Mutex<ConsoleBuffer>> = {
@@ -49,12 +49,6 @@ pub fn print(args: fmt::Arguments) {
     buf.write_fmt(args);
 }
 
-
-pub fn flush() {
-    let mut buf = CONSOLE_BUFFER.lock();
-    buf.flush();
-}
-
 #[macro_export]
 macro_rules! print {
     ($fmt: literal $(, $($arg: tt)+)?) => {
@@ -67,4 +61,15 @@ macro_rules! println {
     ($fmt: literal $(, $($arg: tt)+)?) => {
         $crate::console::print(format_args!(concat!($fmt, "\n") $(, $($arg)+)?));
     }
+}
+
+pub fn getchar() -> u8 {
+    let mut c = [0u8; 1];
+    read(STDIN, &mut c);
+    c[0]
+}
+
+pub fn flush() {
+    let mut buf = CONSOLE_BUFFER.lock();
+    buf.flush();
 }

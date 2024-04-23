@@ -1,5 +1,5 @@
     .section .text.entry
-    .global _start
+    .globl _start
 _start:
     la sp, boot_stack_top
     call rust_main
