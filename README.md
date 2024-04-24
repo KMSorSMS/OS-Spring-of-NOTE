@@ -67,3 +67,6 @@ peterson算法感觉tutorial讲的少了点手动，建议是看看南大jyy的O
 ## Day9 2024/4/17
 
 有个[incorrect usage of slice::from_raw_parts](https://doc.rust-lang.org/beta/core/slice/fn.from_raw_parts.html#incorrect-usage) 
+
+## Day10-Day16 2024/4/18-2024/4/24
+生病住院了，只是把lab2看完了，lab3开了头
