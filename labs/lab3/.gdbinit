@@ -1,6 +1,5 @@
 b rust_main
-b *0x80201272
-b *0x802000be
+b src/syscall/mod.rs:70 if syscall_id == 64
 define dss
   dashboard source -output /dev/pts/$arg0
   dashboard source -style height 0

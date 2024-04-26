@@ -57,6 +57,12 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             cx.x[10] = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12]]) as usize;
         }
         Trap::Exception(Exception::StoreFault) | Trap::Exception(Exception::StorePageFault) => {
+            // if scause.cause() == Trap::Exception(Exception::StoreFault){
+            //     println!("stroFault");
+            // }
+            // if scause.cause() == Trap::Exception(Exception::StorePageFault){
+            //     println!("storepageFault");
+            // }
             println!("[kernel] PageFault in application, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.", stval, cx.sepc);
             exit_current_and_run_next();
         }
