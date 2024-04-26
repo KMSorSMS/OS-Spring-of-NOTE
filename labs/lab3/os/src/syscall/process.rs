@@ -14,6 +14,7 @@ pub struct TimeVal {
 
 /// Task information
 #[allow(dead_code)]
+#[derive(Copy, Clone)]
 pub struct TaskInfo {
     /// Task status in it's life cycle
     status: TaskStatus,
@@ -21,6 +22,25 @@ pub struct TaskInfo {
     syscall_times: [u32; MAX_SYSCALL_NUM],
     /// Total running time of task
     time: usize,
+}
+
+impl TaskInfo {
+    pub fn new() -> Self {
+        TaskInfo {
+            status: TaskStatus::Ready,
+            syscall_times: [0; MAX_SYSCALL_NUM],
+            time: 0,
+        }
+    }
+    pub fn set_status(&mut self, status: TaskStatus) {
+        self.status = status;
+    }
+    pub fn add_syscall_time(&mut self, syscall: usize) {
+        self.syscall_times[syscall] += 1;
+    }
+    pub fn set_time(&mut self, task_start: usize, task_syscall: usize) {
+        self.time = task_syscall - task_start;
+    }
 }
 
 /// task exits and submit an exit code
@@ -53,5 +73,8 @@ pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
 /// YOUR JOB: Finish sys_task_info to pass testcases
 pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
     trace!("kernel: sys_task_info");
-    -1
+    unsafe {
+        (*_ti).time += 1;
+    }
+    0
 }

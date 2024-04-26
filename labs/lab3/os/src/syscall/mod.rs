@@ -23,6 +23,21 @@ const SYSCALL_TASK_INFO: usize = 410;
 
 mod fs;
 mod process;
+use lazy_static::*;
+use crate::config::MAX_APP_NUM;
+use crate::sync::UPSafeCell;
+
+lazy_static! {
+    /// 全局变量：INIT_TIME_LIST用于统计app的初次调度时间
+    pub static ref INIT_TIME_LIST: UPSafeCell<[usize;MAX_APP_NUM]> = unsafe {
+        UPSafeCell::new([0usize;MAX_APP_NUM])
+    };
+    /// 全局变量 TASK_INFO_LIST 用于记录每个任务的内容
+    pub static ref TASK_INFO_LIST: UPSafeCell<[TaskInfo;MAX_APP_NUM]> = unsafe {
+        UPSafeCell::new([TaskInfo::new();MAX_APP_NUM])   
+    }; 
+}
+
 
 use fs::*;
 use process::*;
