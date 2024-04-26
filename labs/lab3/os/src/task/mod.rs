@@ -14,6 +14,7 @@ mod switch;
 #[allow(clippy::module_inception)]
 mod task;
 
+
 use crate::config::MAX_APP_NUM;
 use crate::loader::{get_num_app, init_app_cx};
 use crate::sync::UPSafeCell;
@@ -170,6 +171,10 @@ impl TaskManager {
         } else {
             panic!("All applications completed!");
         }
+    }
+     /// 不可变借用
+    pub fn get_current_task(&self) -> usize{
+        self.inner.access().current_task
     }
 }
 
