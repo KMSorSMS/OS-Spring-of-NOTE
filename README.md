@@ -76,3 +76,9 @@ peterson算法感觉tutorial讲的少了点手动，建议是看看南大jyy的O
 完成lab3的全部，包括简答题，感觉学到了很多东西，和之前的实时操作系统的内容也联系上了不少。
 
 [博客记录lab3](https://liamy.clovy.top/article/OS_Tutorial/lab3)
+
+## Day20 2024/4/28
+
+### 事件 ch4看了有一半
+
+感觉好难，主要是这部分文档感觉写的有点抽象，代码给的支离破碎。
