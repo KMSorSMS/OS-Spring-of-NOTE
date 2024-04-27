@@ -198,7 +198,7 @@ pub fn main() -> ! {
 | stval   | 给出 Trap 附加信息                                           |
 | stvec   | 控制 Trap 处理代码的入口地址                                 |
 
-#### L40：刚进入 `__restore` 时，`a0` 代表了什么值。请指出 `__restore` 的两种使用情景。
+#### 1、L40：刚进入 `__restore` 时，`a0` 代表了什么值。请指出 `__restore` 的两种使用情景。
 
 刚进入`__restore`,此时a0存储的值有两种可能：
 
@@ -268,7 +268,111 @@ pub fn init_app_cx(app_id: usize) -> usize {
 
 当任务第一次调度的时候执行switch函数，将current_task_cx_ptr代表的指向旧任务的内核栈指针保存到它的taskcontext（` sd sp, 8(a0)`）,以及保存ra和s0-s11,然后从新任务（这个时候这个任务是第一次调度，它的taskcontext保存的是上面提到的初始值），很重要的一点就是它里面保存的ra是__restore函数，这是复用的关键，switch后面就会恢复ra s0-s11以及sp（内核栈）的值，当执行`ret`命令后，就会转入restore执行，而restore就会恢复sp栈位用户栈，并且恢复spec的值为任务函数的起始地址，这样执行`sret`的时候，就会返回到用户程序执行，并且栈也是用户栈，并且特权级别也是U
 
+#### 2、L43-L48：这几行汇编代码特殊处理了哪些寄存器？这些寄存器的的值对于进入用户态有何意义？请分别解释。
 
+代码来自于__restore前面几行
 
+```assembly
+ld t0, 32*8(sp)
+ld t1, 33*8(sp)
+ld t2, 2*8(sp)
+csrw sstatus, t0
+csrw sepc, t1
+csrw sscratch, t2
+```
 
+特殊处理的是sstatus、sepc和sscratch，这几个寄存器的操作只能使用csr的特殊指令，简单介绍一下：
 
+- `csrrw`：原子地读取并写入 CSR（Control Status Register，控制状态寄存器）。例如，`csrrw sp, sscratch, sp` 会将 `sscratch` 寄存器的值写入 `sp`，并将 `sp` 的原始值写入 `sscratch`。
+- `csrr`：读取 CSR 的值。例如，`csrr t0, sstatus` 会将 `sstatus` 寄存器的值读取到 `t0`。
+- `csrw`：写入 CSR 的值。例如，`csrw sstatus, t0` 会将 `t0` 的值写入 `sstatus` 寄存器。
+
+再拿出这个表来说明：
+
+| CSR 名  | 该 CSR 与 Trap 相关的功能                                    |
+| ------- | ------------------------------------------------------------ |
+| sstatus | `SPP` 等字段给出 Trap 发生之前 CPU 处在哪个特权级（S/U）等信息 |
+| sepc    | 当 Trap 是一个异常的时候，记录 Trap 发生之前执行的最后一条指令的地址 |
+| scause  | 描述 Trap 的原因                                             |
+| stval   | 给出 Trap 附加信息                                           |
+| stvec   | 控制 Trap 处理代码的入口地址                                 |
+
+所以上面几行代码就是先从内核栈里面取出sstatus->t0、sepc->t1、sscratch(也就是用户栈指针)->t2,然后将这三个从内核栈读出的之前保存的值恢复到这对应的三个特殊寄存器，<u>sret的时候会根据sstatus返回特权级别，根据sepc返回到用户指令，而sscratch则是通过`csrrw sp, sscratch, sp`将用户栈的值放入sp，将内核栈sp的值存入sscratch进行保存</u>。
+
+#### 3、L50-L56：为何跳过了 `x2` 和 `x4`？
+
+```assembly
+ld x1, 1*8(sp)
+ld x3, 3*8(sp)
+.set n, 5
+.rept 27
+   LOAD_GP %n
+   .set n, n+1
+.endr
+```
+
+##### 对于x2
+
+因为X2是栈指针寄存器sp，对于它的处理，不仅需要把它从内核栈换为用户栈（也就是把2*8(sp)的值取出来给到sp，同时它当前出栈完成后所代表的内核栈的值也需要保存下来，我们需要保存到sscratch特殊寄存器里面），为了同时满足这两点，我们不得不对sp（x2）单独处理，在sp完成所有出栈后，将它的值保存入sscratch并且把sscratch的值（是用户栈的值，因为之前通过`ld t2, 2*8(sp)`和`csrw sscratch, t2`）把它取出来放入了sscratch的，这样只需要一条特殊寄存器的指令实现sp和sscratch的交换，让sp改为用户栈，sscratch保存内核栈：`csrrw sp, sscratch, sp`
+
+#### 4、L60：该指令之后，`sp` 和 `sscratch` 中的值分别有什么意义？
+
+这一个问题前面已经详细阐释了，这里直接说答案：
+
+```assembly
+csrrw sp, sscratch, sp
+```
+
+sp的值变为之前保存在内核栈是的用户栈的地址值，sscratch保存经过__restore恢复的内核栈的地址值，当下次异常处理的时候，会利用
+
+```assembly
+__alltraps:
+  csrrw sp, sscratch, sp
+```
+
+将栈切换，所以保存sscratch很有必要，后续trap的时候都是通过它来改变sp为内核栈
+
+#### 5、`__restore`：中发生状态切换在哪一条指令？为何该指令执行之后会进入用户态？
+
+当然是`sret`了
+
+前面也是阐释过的：
+
+sret指令执行后，会将sepc的值加载到pc，完成跳转如用户程序执行，并且会从Supevisor模式中的trap返回（根据的是我们恢复的sstatus寄存器的内容，详见下面这个手册的图片），这样就完成指令执行后进入用户态（因为我们的sstatus恢复的时候是恢复的用户态的状态内容）
+
+![image-20240427095646340](D:/data_space/typora_photo_data/image-20240427095646340.png)
+
+#### 6、L13：该指令之后，`sp` 和 `sscratch` 中的值分别有什么意义？
+
+这里前面也阐释过，
+
+```assembly
+csrrw sp, sscratch, sp
+```
+
+这个是在__alltraps的第一条指令，是进入trap处理异常/中断，这里就是进入异常的时候把sp从之前的用户栈转为内核栈，而把之前的用户栈保存如sscratch寄存器里面，执行完成后，sp就是内核栈的指针，而sscratch就是保存的用户栈指针。
+
+#### 7、从 U 态进入 S 态是哪一条指令发生的？
+
+当然是在用户程序里面通过包装的syscall，而这个函数通过汇编指令调用的ecall进入的s态啦，不过还有一种可能是用户程序发生异常比如访问非法地址，或者指令方法（如使用了sret等指令）
+
+syscall的情况就是trap到UserEnvCall异常处理：
+
+```rust
+
+pub fn syscall(id: usize, args: [usize; 3]) -> isize {
+    let mut ret: isize;
+    unsafe {
+        core::arch::asm!(
+            "ecall",
+            inlateout("x10") args[0] => ret,
+            in("x11") args[1],
+            in("x12") args[2],
+            in("x17") id
+        );
+    }
+    ret
+}
+```
+
+而用户如果是访问非法地址（如0x0）、非法指令（如sret）这种，就会触发trap到内核s特权级别的处理，这个时候进入s特权模式，并且转入__alltraps函数执行（因为我们设置了stvec寄存器）
