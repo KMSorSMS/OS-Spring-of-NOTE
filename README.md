@@ -70,3 +70,9 @@ peterson算法感觉tutorial讲的少了点手动，建议是看看南大jyy的O
 
 ## Day10-Day16 2024/4/18-2024/4/24
 生病住院了，只是把lab2看完了，lab3开了头
+
+## Day17-Day19 2024/4/25-2024/4/27
+
+完成lab3的全部，包括简答题，感觉学到了很多东西，和之前的实时操作系统的内容也联系上了不少。
+
+[博客记录lab3](https://liamy.clovy.top/article/OS_Tutorial/lab3)
