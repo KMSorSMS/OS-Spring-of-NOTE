@@ -14,7 +14,6 @@ mod switch;
 #[allow(clippy::module_inception)]
 mod task;
 
-
 use crate::config::MAX_APP_NUM;
 use crate::loader::{get_num_app, init_app_cx};
 use crate::sync::UPSafeCell;
@@ -121,11 +120,11 @@ impl TaskManager {
         let mut inner = self.inner.exclusive_access();
         let current = inner.current_task;
         inner.tasks[current].task_status = TaskStatus::Exited;
-         // 这里也需要去改变全局变量的状态
-         let mut task_info_list = TASK_INFO_LIST.exclusive_access();
-         task_info_list[current].set_status(TaskStatus::Exited);
-         drop(task_info_list);
-         // 切记drop
+        // 这里也需要去改变全局变量的状态
+        let mut task_info_list = TASK_INFO_LIST.exclusive_access();
+        task_info_list[current].set_status(TaskStatus::Exited);
+        drop(task_info_list);
+        // 切记drop
     }
 
     /// Find next task to run and return task id.
@@ -172,8 +171,8 @@ impl TaskManager {
             panic!("All applications completed!");
         }
     }
-     /// 不可变借用
-    pub fn get_current_task(&self) -> usize{
+    /// 不可变借用
+    pub fn get_current_task(&self) -> usize {
         self.inner.access().current_task
     }
 }
