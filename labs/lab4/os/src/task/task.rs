@@ -99,6 +99,7 @@ impl TaskControlBlock {
 }
 
 #[derive(Copy, Clone, PartialEq)]
+// 显示指定这个enum占据的空间
 /// task status: UnInit, Ready, Running, Exited
 pub enum TaskStatus {
     /// uninitialized

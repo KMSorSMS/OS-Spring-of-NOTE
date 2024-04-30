@@ -25,13 +25,16 @@ const SYSCALL_MMAP: usize = 222;
 /// taskinfo syscall
 const SYSCALL_TASK_INFO: usize = 410;
 /// syscall num
-const SYSCALL_TYPE_NUM: usize = 5;
+const SYSCALL_TYPE_NUM: usize = 8;
 
 const SYSCALL_TYPE: [usize; SYSCALL_TYPE_NUM] = [
     SYSCALL_WRITE,
     SYSCALL_EXIT,
     SYSCALL_YIELD,
     SYSCALL_GET_TIME,
+    SYSCALL_SBRK,
+    SYSCALL_MUNMAP,
+    SYSCALL_MMAP,
     SYSCALL_TASK_INFO,
 ];
 mod fs;
@@ -67,6 +70,10 @@ pub fn syscall(syscall_id: usize, args: [usize; 3]) -> isize {
     current_task_info.set_time(init_time_list[current], get_time_ms());
     // 更新syscall调用,确保syscall在里面
     if SYSCALL_TYPE.contains(&syscall_id) {
+        // if syscall_id == 169{
+        //     println!("\ncurrent task is{} ",current);
+        //     println!("\n--{}--\n", current_task_info.syscall_times[169])
+        // }
         current_task_info.add_syscall_time(syscall_id);
     }
     // drop一定记得

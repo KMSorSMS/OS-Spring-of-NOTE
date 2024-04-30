@@ -1,12 +1,16 @@
 //! Process management syscalls
-use core::mem::size_of;
+use core::mem::{self, size_of};
+
+// use alloc::vec;
+// use alloc::vec::Vec;
 
 use crate::{
     config::MAX_SYSCALL_NUM,
     mm::translated_byte_buffer,
+    syscall::TASK_INFO_LIST,
     task::{
         change_program_brk, current_user_token, exit_current_and_run_next,
-        suspend_current_and_run_next, TaskStatus,
+        suspend_current_and_run_next, TaskStatus, TASK_MANAGER,
     },
     timer::get_time_us,
 };
@@ -25,7 +29,7 @@ pub struct TaskInfo {
     /// Task status in it's life cycle
     status: TaskStatus,
     /// The numbers of syscall called by task
-    syscall_times: [u32; MAX_SYSCALL_NUM],
+    pub syscall_times: [u32; MAX_SYSCALL_NUM],
     /// Total running time of task
     time: usize,
 }
@@ -43,10 +47,23 @@ impl TaskInfo {
     }
     pub fn add_syscall_time(&mut self, syscall: usize) {
         self.syscall_times[syscall] += 1;
+        // if syscall == 169 && self.syscall_times[syscall] > 18000{
+        //     println!("\n--{}--\n", self.syscall_times[syscall])
+        // }
     }
     pub fn set_time(&mut self, task_start: usize, task_syscall: usize) {
         self.time = task_syscall - task_start;
     }
+    // ///实现将TaskInfo里面的所有信息转为u8的数组
+    // pub fn to_bytes(&self) -> Vec<u8> {
+    //     let mut ret_bytes: Vec<u8> = vec![];
+    //     ret_bytes.extend_from_slice(&(self.status as usize).to_le_bytes());
+    //     for &num in self.syscall_times.iter() {
+    //         ret_bytes.extend_from_slice(&num.to_le_bytes());
+    //     }
+    //     ret_bytes.extend_from_slice(&self.time.to_le_bytes());
+    //     ret_bytes
+    // }
 }
 
 /// task exits and submit an exit code
@@ -85,17 +102,17 @@ pub fn sys_get_time(_ts: *mut TimeVal, _tz: usize) -> isize {
         let len = buffers[0].len();
         buffers[0].copy_from_slice(&sec_bytes[..len]);
         //剩下的部分需要复制到buffer[1]里面
-        buffers[1][..(8-len)].copy_from_slice(&sec_bytes[len..]);
+        buffers[1][..(8 - len)].copy_from_slice(&sec_bytes[len..]);
         //后续的可以直接放到下一页
-        buffers[1][(8-len)..].copy_from_slice(&usec_bytes);
+        buffers[1][(8 - len)..].copy_from_slice(&usec_bytes);
     } else if buffers[0].len() < 16 {
         //走到这里是当前页剩余超过8字节，但是少于16字节，导致usec放的时候会跨页
         buffers[0][..8].copy_from_slice(&sec_bytes);
         // 当前页能放置usec的长度就是buffer[0]的长度减去sec_bytes的长度（8）
         let len = buffers[0].len() - 8;
         buffers[0][8..].copy_from_slice(&usec_bytes[..len]);
-        buffers[1][..(8-len)].copy_from_slice(&usec_bytes[len..]);
-    }else {
+        buffers[1][..(8 - len)].copy_from_slice(&usec_bytes[len..]);
+    } else {
         //这种情况就是当前页面足够大，放得下：
         buffers[0][..8].copy_from_slice(&sec_bytes);
         buffers[0][8..16].copy_from_slice(&usec_bytes);
@@ -108,7 +125,44 @@ pub fn sys_get_time(_ts: *mut TimeVal, _tz: usize) -> isize {
 /// HINT: What if [`TaskInfo`] is splitted by two pages ?
 pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
     trace!("kernel: sys_task_info NOT IMPLEMENTED YET!");
-
+    //这里的实现和之前一样，并且和sys_get_time的更新实现也是类似：
+    //取出当前任务的taskinfo
+    // 取出当前任务的taskinfo，然后一个个传给指针
+    let current = TASK_MANAGER.get_current_task();
+    let task_info_list = TASK_INFO_LIST.exclusive_access();
+    let current_task_info = &task_info_list[current];
+    let current_task_info_byte :[u8; mem::size_of::<TaskInfo>()]= unsafe {
+        mem::transmute(*current_task_info)
+    };
+    // println!(
+    //     "\nthe syscall time of time{}---\n",
+    //     current_task_info.syscall_times[169]
+    // );
+    // println!(
+    //     "\nthe syscall time of taskinfo{}---\n",
+    //     current_task_info.syscall_times[410]
+    // );
+    // println!(
+    //     "\nthe syscall time of write{}---\n",
+    //     current_task_info.syscall_times[64]
+    // );
+    //这里甚至比sys_get_time简单，只需要传入一个数据，
+    let mut buffers = translated_byte_buffer(
+        current_user_token(),
+        _ti as *const u8,
+        size_of::<TaskInfo>(),
+    );
+    //检查是否split了
+    if buffers[0].len() < size_of::<TaskInfo>() {
+        //说明跨页了
+        let len = buffers[0].len();
+        buffers[0].copy_from_slice(&current_task_info_byte[..len]);
+        //剩下的给到下一页
+        buffers[1][..(size_of::<TaskInfo>() - len)].copy_from_slice(&current_task_info_byte[len..]);
+    } else {
+        //没跨页
+        buffers[0][..size_of::<TaskInfo>()].copy_from_slice(&current_task_info_byte);
+    }
     0
 }
 
