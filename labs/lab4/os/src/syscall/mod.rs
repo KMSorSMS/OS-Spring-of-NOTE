@@ -24,14 +24,54 @@ const SYSCALL_MUNMAP: usize = 215;
 const SYSCALL_MMAP: usize = 222;
 /// taskinfo syscall
 const SYSCALL_TASK_INFO: usize = 410;
+/// syscall num
+const SYSCALL_TYPE_NUM: usize = 5;
 
+const SYSCALL_TYPE: [usize; SYSCALL_TYPE_NUM] = [
+    SYSCALL_WRITE,
+    SYSCALL_EXIT,
+    SYSCALL_YIELD,
+    SYSCALL_GET_TIME,
+    SYSCALL_TASK_INFO,
+];
 mod fs;
 mod process;
 
 use fs::*;
 use process::*;
+use lazy_static::*;
+use crate::config::MAX_APP_NUM;
+use crate::sync::UPSafeCell;
+
+
+lazy_static! {
+    /// 全局变量：INIT_TIME_LIST用于统计app的初次调度时间
+    pub static ref INIT_TIME_LIST: UPSafeCell<[usize;MAX_APP_NUM]> = unsafe {
+        UPSafeCell::new([0usize;MAX_APP_NUM])
+    };
+    /// 全局变量 TASK_INFO_LIST 用于记录每个任务的内容
+    pub static ref TASK_INFO_LIST: UPSafeCell<[TaskInfo;MAX_APP_NUM]> = unsafe {
+        UPSafeCell::new([TaskInfo::new();MAX_APP_NUM])
+    };
+}
+
+use crate::task::TASK_MANAGER;
+use crate::timer::get_time_ms;
 /// handle syscall exception with `syscall_id` and other arguments
 pub fn syscall(syscall_id: usize, args: [usize; 3]) -> isize {
+    let current = TASK_MANAGER.get_current_task();
+    let mut task_info_list = TASK_INFO_LIST.exclusive_access();
+    let current_task_info = &mut task_info_list[current];
+    // 先更新系统调用时间
+    let init_time_list = INIT_TIME_LIST.exclusive_access();
+    current_task_info.set_time(init_time_list[current], get_time_ms());
+    // 更新syscall调用,确保syscall在里面
+    if SYSCALL_TYPE.contains(&syscall_id) {
+        current_task_info.add_syscall_time(syscall_id);
+    }
+    // drop一定记得
+    drop(task_info_list);
+    drop(init_time_list);
     match syscall_id {
         SYSCALL_WRITE => sys_write(args[0], args[1] as *const u8, args[2]),
         SYSCALL_EXIT => sys_exit(args[0] as i32),

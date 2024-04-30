@@ -20,7 +20,7 @@ const SYSCALL_YIELD: usize = 124;
 const SYSCALL_GET_TIME: usize = 169;
 /// taskinfo syscall
 const SYSCALL_TASK_INFO: usize = 410;
-// syscall num
+/// syscall num
 const SYSCALL_TYPE_NUM: usize = 5;
 
 mod fs;

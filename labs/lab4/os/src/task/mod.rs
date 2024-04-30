@@ -153,6 +153,10 @@ impl TaskManager {
             panic!("All applications completed!");
         }
     }
+    /// 不可变借用
+    pub fn get_current_task(&self) -> usize {
+        self.inner.access().current_task
+    }
 }
 
 /// Run the first task in task list.
