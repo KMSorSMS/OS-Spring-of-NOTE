@@ -3,10 +3,9 @@ use core::mem::{self, size_of};
 
 // use alloc::vec;
 // use alloc::vec::Vec;
-
 use crate::{
     config::MAX_SYSCALL_NUM,
-    mm::translated_byte_buffer,
+    mm::{frame_alloc, translated_byte_buffer, MapPermission, VirtPageNum},
     syscall::TASK_INFO_LIST,
     task::{
         change_program_brk, current_user_token, exit_current_and_run_next,
@@ -169,13 +168,89 @@ pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
 // YOUR JOB: Implement mmap.
 pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
     trace!("kernel: sys_mmap NOT IMPLEMENTED YET!");
-    -1
+    //这里可以参考task.rs里面给任务分配内存（栈，trapcontext）的操作
+    //先把参数检查做了，要求有：
+    /*
+    start 需要映射的虚存起始地址，要求按页对齐
+    len 映射字节长度，可以为 0
+    port：第 0 位表示是否可读，第 1 位表示是否可写，第 2 位表示是否可执行。其他位无效且必须为 0
+     */
+    //先检查start是否对齐
+    if _start % 4096 != 0 {
+        return -1;
+    }
+    if _port & 0b111 != _port || _port & 0b111 == 0 {
+        return -1;
+    }
+    if _len == 0 {
+        return 0;
+    }
+    //检查是否已经存在页映射了[start,start+len)这段虚拟地址
+    let current = TASK_MANAGER.get_current_task();
+    //获取当前任务的taskcontrolblock
+    let tcb = TASK_MANAGER.get_task(current);
+    //找到start对应的vpn号以及start+len对应的vpn号
+    let start_vpn:VirtPageNum = _start.into();
+    let end_vpn:VirtPageNum = (_start+_len).into();
+    //检查是否已经存在页映射了[start,start+len)这段虚拟地址,检查
+    for vpn in start_vpn.0..end_vpn.0{
+        if tcb.memory_set.translate(vpn.into()).is_some(){
+            return -1;
+        }
+    }
+    //完成了参数检查，接下来就是分配内存了,先把MapPermission由port确定了
+    let mut map_perm = MapPermission::U;
+    if _port & 0b001 != 0 {
+        map_perm |= MapPermission::R;
+    }
+    if _port & 0b010 != 0 {
+        map_perm |= MapPermission::W;
+    }
+    if _port & 0b100 != 0 {
+        map_perm |= MapPermission::X;
+    }
+    //然后根据地址先插入我们的memory_set
+    tcb.memory_set.insert_framed_area(_start.into(),(_start+_len).into(),map_perm);
+    //接下来就是获取物理地址，然后映射到虚拟地址，写到tcb的pagetable里面，需要分配不止一个frame
+    for vpn in start_vpn.0..end_vpn.0{
+        if let Some(phy_frame_tracker) = frame_alloc(){
+            //分配成功,FrameTracker入到pagetable里面
+            tcb.memory_set.map2physical(vpn.into(), phy_frame_tracker.ppn, map_perm);
+        }else {
+            //分配失败
+            return -1;
+        }
+    }
+    0
 }
 
 // YOUR JOB: Implement munmap.
 pub fn sys_munmap(_start: usize, _len: usize) -> isize {
     trace!("kernel: sys_munmap NOT IMPLEMENTED YET!");
-    -1
+    //取消[start,start+len)这段虚拟地址的映射,同样要参数检验
+    //先检查start是否对齐
+    if _start % 4096 != 0 {
+        return -1;
+    }
+    if _len == 0 {
+        return 0;
+    }
+    //检查是否已经存在页映射了[start,start+len)这段虚拟地址，如果没有，直接返回-1
+    let current = TASK_MANAGER.get_current_task();
+    //获取当前任务的taskcontrolblock
+    let tcb = TASK_MANAGER.get_task(current);
+    //找到start对应的vpn号以及start+len对应的vpn号
+    let start_vpn:VirtPageNum = _start.into();
+    let end_vpn:VirtPageNum = (_start+_len).into();
+    //检查是否已经存在页映射了[start,start+len)这段虚拟地址,检查
+    for vpn in start_vpn.0..end_vpn.0{
+        if tcb.memory_set.translate(vpn.into()).is_none(){
+            return -1;
+        }
+    }
+    //完成了参数检查，接下来就是删除内存了,已经包装好了方法unmap
+    tcb.memory_set.unmap(start_vpn, end_vpn);
+    0
 }
 /// change data segment size
 pub fn sys_sbrk(size: i32) -> isize {

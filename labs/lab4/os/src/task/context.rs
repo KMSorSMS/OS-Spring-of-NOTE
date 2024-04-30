@@ -3,6 +3,7 @@ use crate::trap::trap_return;
 
 #[repr(C)]
 /// task context structure containing some registers
+// #[derive(Clone)]
 pub struct TaskContext {
     /// Ret position after task switching
     ra: usize,

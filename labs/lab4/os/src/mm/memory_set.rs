@@ -34,6 +34,7 @@ lazy_static! {
         Arc::new(unsafe { UPSafeCell::new(MemorySet::new_kernel()) });
 }
 /// address space
+// #[derive(Clone)]
 pub struct MemorySet {
     page_table: PageTable,
     areas: Vec<MapArea>,
@@ -261,6 +262,22 @@ impl MemorySet {
         } else {
             false
         }
+    }
+    ///添加一个新的映射区域
+    pub fn map2physical(&mut self, vpn: VirtPageNum, ppn: PhysPageNum, flags: MapPermission) {
+        self.page_table.map(vpn, ppn, PTEFlags::from_bits(flags.bits).unwrap());
+    }
+    /// unmap a virtual page number and delete the maparea
+    #[allow(unused)]
+    pub fn unmap(&mut self, vpn_start: VirtPageNum, vpn_end: VirtPageNum) {
+        for vpn in vpn_start.0..vpn_end.0{
+            self.page_table.unmap(VirtPageNum(vpn));
+        }
+        let vpn_range = VPNRange::new(vpn_start, vpn_end);
+        self.areas.retain(|area| {
+            //area的vpn_range是个迭代器，只需要判断[vpn_start,vpn_end]是否与vpn_range有交集即可
+            !vpn_range.is_overlap(&area.vpn_range)
+        });
     }
 }
 /// map area structure, controls a contiguous piece of virtual memory

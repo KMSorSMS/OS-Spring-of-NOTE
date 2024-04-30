@@ -118,11 +118,11 @@ impl TaskManager {
         let mut inner = self.inner.exclusive_access();
         let current = inner.current_task;
         inner.tasks[current].task_status = TaskStatus::Exited;
-         // 这里也需要去改变全局变量的状态
-         let mut task_info_list = TASK_INFO_LIST.exclusive_access();
-         task_info_list[current].set_status(TaskStatus::Exited);
-         drop(task_info_list);
-         // 切记drop
+        // 这里也需要去改变全局变量的状态
+        let mut task_info_list = TASK_INFO_LIST.exclusive_access();
+        task_info_list[current].set_status(TaskStatus::Exited);
+        drop(task_info_list);
+        // 切记drop
     }
 
     /// Find next task to run and return task id.
@@ -191,6 +191,11 @@ impl TaskManager {
     /// 不可变借用
     pub fn get_current_task(&self) -> usize {
         self.inner.access().current_task
+    }
+    /// 根据task_id得到对应的task的control block的引用
+    pub fn get_task(&self, task_id: usize) -> &'static mut TaskControlBlock {
+        let mut inner = self.inner.exclusive_access();
+        inner.tasks[task_id].get_control_block()
     }
 }
 

@@ -7,6 +7,7 @@ use crate::mm::{
 use crate::trap::{trap_handler, TrapContext};
 
 /// The task control block (TCB) of a task.
+// #[derive(Clone)]
 pub struct TaskControlBlock {
     /// Save task context
     pub task_cx: TaskContext,
@@ -95,6 +96,10 @@ impl TaskControlBlock {
         } else {
             None
         }
+    }
+    ///get the control block of the task
+    pub fn get_control_block(&mut self) -> &'static mut Self {
+        unsafe{((self) as *mut Self).as_mut().unwrap()}
     }
 }
 

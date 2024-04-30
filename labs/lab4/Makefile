@@ -33,5 +33,5 @@ debug: build
 		-bios $(BOOTLOADER) \
 		-kernel $(KERNEL_ELF)\
 		-s -S" && \
-		tmux split-window -h " RUST_GDB=/usr/bin/gdb-multiarch rust-gdb  -ex 'file $(KERNEL_ELF)' -ex 'set arch riscv:rv64' -ex 'target remote localhost:1234' -ex 'source ../.gdbinit' " && \
+		tmux split-window -h " RUST_GDB=/usr/bin/gdb-multiarch rust-gdb  -ex 'file $(KERNEL_ELF)' -ex 'set arch riscv:rv64' -ex 'target remote localhost:1234' -ex 'source ./.gdbinit' " && \
 		tmux -2 attach-session -d
