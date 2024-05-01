@@ -5,8 +5,7 @@ use alloc::sync::Arc;
 
 use crate::{
     config::MAX_SYSCALL_NUM, loader::get_app_data_by_name, mm::{translated_byte_buffer, translated_refmut, translated_str, MapPermission, VirtAddr, VirtPageNum}, syscall::TASK_INFO_LIST, task::{
-        add_task, current_task, current_user_token, exit_current_and_run_next,
-        suspend_current_and_run_next, TaskStatus,
+        add_task, current_task, current_user_token, exit_current_and_run_next, suspend_current_and_run_next, TaskControlBlock, TaskStatus
     }, timer::get_time_us
 };
 
@@ -354,12 +353,30 @@ pub fn sys_sbrk(size: i32) -> isize {
 
 /// YOUR JOB: Implement spawn.
 /// HINT: fork + exec =/= spawn
+/// 注意返回的是pid
 pub fn sys_spawn(_path: *const u8) -> isize {
     trace!(
         "kernel:pid[{}] sys_spawn NOT IMPLEMENTED",
         current_task().unwrap().pid.0
     );
-    -1
+    //这里仿照sys_exec的实现，不要去复制父进程的地址空间，和fork区别开,但是fork做的其它内容都要做
+    //先得数据：
+    let token = current_user_token();
+    let path = translated_str(token, _path);
+    if let Some(data) = get_app_data_by_name(path.as_str()) {
+        //创建一个新的task，这个过程我包装在了task.rs里面
+        let new_task:Arc<TaskControlBlock> = TaskControlBlock::new(&data).into();
+        //这里需要像fork一样，把新创建的进程作为child加入到当前进程的children里面
+        let binding = current_task().unwrap();
+        let mut parent_inner = binding.inner_exclusive_access();
+        parent_inner.children.push(new_task.clone());
+        //然后把新的task加入到scheduler里面
+        let newpid = new_task.pid.0;
+        add_task(new_task);
+        newpid as isize
+    } else {
+        -1
+    }
 }
 
 // YOUR JOB: Set task priority.
