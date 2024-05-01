@@ -300,6 +300,25 @@ impl MemorySet {
             false
         }
     }
+    ///检查memory area是否和某个VPNRange有重叠
+    pub fn check_overlap(&self, vpn_start: VirtPageNum, vpn_end: VirtPageNum) -> bool {
+        let vpn_range = VPNRange::new(vpn_start, vpn_end);
+        self.areas
+            .iter()
+            .any(|area| vpn_range.is_overlap(&area.vpn_range))
+    }
+    /// unmap a virtual page number and delete the maparea
+    #[allow(unused)]
+    pub fn unmap(&mut self, vpn_start: VirtPageNum, vpn_end: VirtPageNum) {
+        for vpn in vpn_start.0..vpn_end.0 {
+            self.page_table.unmap(VirtPageNum(vpn));
+        }
+        let vpn_range = VPNRange::new(vpn_start, vpn_end);
+        self.areas.retain(|area| {
+            //area的vpn_range是个迭代器，只需要判断[vpn_start,vpn_end]是否与vpn_range有交集即可
+            !vpn_range.is_overlap(&area.vpn_range)
+        });
+    }
 }
 /// map area structure, controls a contiguous piece of virtual memory
 pub struct MapArea {

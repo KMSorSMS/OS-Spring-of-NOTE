@@ -8,6 +8,7 @@ use super::__switch;
 use super::{fetch_task, TaskStatus};
 use super::{TaskContext, TaskControlBlock};
 use crate::sync::UPSafeCell;
+use crate::syscall::{INIT_TIME_LIST, TASK_INFO_LIST};
 use crate::trap::TrapContext;
 use alloc::sync::Arc;
 use lazy_static::*;
@@ -61,6 +62,29 @@ pub fn run_tasks() {
             let mut task_inner = task.inner_exclusive_access();
             let next_task_cx_ptr = &task_inner.task_cx as *const TaskContext;
             task_inner.task_status = TaskStatus::Running;
+            // 为了记录，这里需要同时更新全局变量的任务状态
+            let mut task_info_list = TASK_INFO_LIST.exclusive_access();
+            let next = task.pid.0;
+            // println!("\n--next task pid: {}", next);
+            //有可能最开始任务还不存在，如果不存在是新建一个map结点，如果存在，是更新map结点
+            if task_info_list.get(&next).is_none() {
+                task_info_list.insert(next, crate::syscall::TaskInfo::new());
+            }
+            // 更新任务状态
+            task_info_list
+                .get_mut(&next)
+                .unwrap()
+                .set_status(TaskStatus::Running);
+            drop(task_info_list);
+            // 切记要drop
+            // 更新任务初次调用时间，这里需要判定任务是否是第一次被调度，只有第一次被调度才会更新时间
+            let mut init_time = INIT_TIME_LIST.exclusive_access();
+            if init_time.get(&next).is_none() {
+                // 说明是第一次被调度,则更新时间
+                init_time.insert(next, crate::timer::get_time_ms());
+            }
+            drop(init_time);
+
             // release coming task_inner manually
             drop(task_inner);
             // release coming task TCB manually

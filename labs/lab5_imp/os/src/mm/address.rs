@@ -269,5 +269,11 @@ where
         }
     }
 }
+///实现一个方法用于检测两个SimpleRange是否有交集
+impl SimpleRange<VirtPageNum> {
+    pub fn is_overlap(&self, other: &SimpleRange<VirtPageNum>) -> bool {
+        self.l < other.r && self.r > other.l
+    }
+}
 /// a simple range structure for virtual page number
 pub type VPNRange = SimpleRange<VirtPageNum>;

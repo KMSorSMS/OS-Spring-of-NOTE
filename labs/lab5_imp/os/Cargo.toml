@@ -13,3 +13,6 @@ lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 log = "0.4"
 riscv = { git = "https://github.com/rcore-os/riscv", features = ["inline-asm"] }
 xmas-elf = "0.7.0"
+
+[profile.release]
+debug = true

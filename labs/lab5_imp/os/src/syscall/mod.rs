@@ -42,19 +42,46 @@ const SYSCALL_TASK_INFO: usize = 410;
 
 mod fs;
 mod process;
-// use lazy_static::*;
+use alloc::collections::BTreeMap;
+use lazy_static::*;
 
-
-// //建立两个全局变量，采取BTeeMap的数据结构存储任务的pid和信息的对应关系
-// lazy_static! {
-//     ///全局变量：INIT_TIME_LIST用于统计app的初次调度时间
-//     pub static ref INIT_TIME_LIST: Mutex<BTreeMap<usize, usize>> = Mutex::new(BTreeMap::new());
-// }
+//建立两个全局变量，采取BTeeMap的数据结构存储任务的pid和信息的对应关系
+lazy_static! {
+    ///全局变量：INIT_TIME_LIST用于统计app的初次调度时间
+    pub static ref INIT_TIME_LIST: UPSafeCell<BTreeMap<usize,usize>> = unsafe {
+        UPSafeCell::new(BTreeMap::new())
+    };
+    ///全局变量TASK_INFO_LIST 用于记录每个任务的info
+    pub static ref TASK_INFO_LIST: UPSafeCell<BTreeMap<usize,TaskInfo>> = unsafe {
+        UPSafeCell::new(BTreeMap::new())
+    };
+}
+pub use process::TaskInfo;
 
 use fs::*;
 use process::*;
+
+use crate::{config::MAX_SYSCALL_NUM, sync::UPSafeCell, task::current_task, timer::get_time_ms};
 /// handle syscall exception with `syscall_id` and other arguments
 pub fn syscall(syscall_id: usize, args: [usize; 3]) -> isize {
+    //得到当前任务的pid号
+    let current = current_task().unwrap().pid.0; 
+    let mut task_info_list = TASK_INFO_LIST.exclusive_access();
+    let current_task_info = task_info_list.get_mut(&current).unwrap();
+    // 先更新系统调用时间
+    let init_time_list = INIT_TIME_LIST.exclusive_access();
+    current_task_info.set_time(*init_time_list.get(&current).unwrap(), get_time_ms());
+    // 更新syscall调用,确保syscall在里面
+    if syscall_id < MAX_SYSCALL_NUM {
+        // if syscall_id == 169{
+        //     println!("\ncurrent task is{} ",current);
+        //     println!("\n--{}--\n", current_task_info.syscall_times[169])
+        // }
+        current_task_info.add_syscall_time(syscall_id);
+    }
+    // drop一定记得
+    drop(task_info_list);
+    drop(init_time_list);
     match syscall_id {
         SYSCALL_READ => sys_read(args[0], args[1] as *const u8, args[2]),
         SYSCALL_WRITE => sys_write(args[0], args[1] as *const u8, args[2]),
