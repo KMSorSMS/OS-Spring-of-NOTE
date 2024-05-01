@@ -1,4 +1,4 @@
-# LAB2---袁子为
+# LAB3---袁子为
 
 ## 荣誉准则
 
@@ -22,8 +22,4 @@
 
 写在博客里面了：
 
-[rcore-lab4](https://liamy.clovy.top/article/OS_Tutorial/lab4Pre)
-
-## 简答作业
-
-先留着，我担心实验做不完，时间太赶了
+[rcore-lab5](https://liamy.clovy.top/article/OS_Tutorial/lab5)

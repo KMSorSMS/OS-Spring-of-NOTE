@@ -1,7 +1,7 @@
 //! Types related to task management & Functions for completely changing TCB
 use super::TaskContext;
 use super::{kstack_alloc, pid_alloc, KernelStack, PidHandle};
-use crate::config::TRAP_CONTEXT_BASE;
+use crate::config::{BIG_STRIDE, DEFAULT_PRIORITY, TRAP_CONTEXT_BASE};
 use crate::mm::{MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE};
 use crate::sync::UPSafeCell;
 use crate::trap::{trap_handler, TrapContext};
@@ -22,6 +22,10 @@ pub struct TaskControlBlock {
 
     /// Mutable
     inner: UPSafeCell<TaskControlBlockInner>,
+    /// the priority of the task
+    priority: UPSafeCell<isize>,
+    /// stride in stride algorithm
+    stride: UPSafeCell<isize>,
 }
 
 impl TaskControlBlock {
@@ -33,6 +37,31 @@ impl TaskControlBlock {
     pub fn get_user_token(&self) -> usize {
         let inner = self.inner_exclusive_access();
         inner.memory_set.token()
+    }
+    /// 设置优先级
+    pub fn set_priority(&self, priority: isize) {
+        let mut _priority = self.priority.exclusive_access();
+        *_priority = priority;
+    }
+    /// 设置stride
+    pub fn set_stride(&self, stride: isize) {
+        let mut _stride = self.stride.exclusive_access();
+        *_stride = stride;
+    }
+    /// 实现stride算法的pass操作，即stride += BIG_STRIDE / priority
+    pub fn pass(&self) {
+        let mut _stride = self.stride.exclusive_access();
+        let priority = self.priority.exclusive_access();
+        //这里考虑一下溢出，如果会超过isize的最大值，就不加了
+        if BIG_STRIDE / *priority < isize::MAX - *_stride {
+            *_stride += BIG_STRIDE / *priority;
+        }
+    }
+    /// 获取stride的大小
+    /// 用于在TaskManager中获取stride最小的任务
+    pub fn get_stride(&self) -> isize {
+        let stride = self.stride.exclusive_access();
+        *stride
     }
 }
 
@@ -120,6 +149,12 @@ impl TaskControlBlock {
                     program_brk: user_sp,
                 })
             },
+            priority: unsafe {
+                UPSafeCell::new(DEFAULT_PRIORITY)   
+            },
+            stride: unsafe {
+                UPSafeCell::new(0)
+            }
         };
         // prepare TrapContext in user space
         let trap_cx = task_control_block.inner_exclusive_access().get_trap_cx();
@@ -193,6 +228,12 @@ impl TaskControlBlock {
                     program_brk: parent_inner.program_brk,
                 })
             },
+            priority: unsafe {
+                UPSafeCell::new(DEFAULT_PRIORITY)   
+            },
+            stride: unsafe {
+                UPSafeCell::new(0)
+            }
         });
         // add child
         parent_inner.children.push(task_control_block.clone());

@@ -380,10 +380,22 @@ pub fn sys_spawn(_path: *const u8) -> isize {
 }
 
 // YOUR JOB: Set task priority.
+///要求:
+/// 进程初始 stride 设置为 0 
+/// stride 调度要求进程优先级 >=2 需要检验
+/// 进程初始优先级设置为 16，BIG_STRIDE 在config里面
 pub fn sys_set_priority(_prio: isize) -> isize {
     trace!(
         "kernel:pid[{}] sys_set_priority NOT IMPLEMENTED",
         current_task().unwrap().pid.0
     );
-    -1
+    //检验参数：
+    if _prio < 2{
+        return -1;
+    }
+    //获取当前任务
+    let tcb = current_task().unwrap();
+    //设置prio
+    tcb.set_priority(_prio);
+    _prio
 }
