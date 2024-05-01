@@ -263,14 +263,14 @@ impl MemorySet {
             false
         }
     }
-    ///添加一个新的映射区域
-    pub fn map2physical(&mut self, vpn: VirtPageNum, ppn: PhysPageNum, flags: MapPermission) {
-        self.page_table.map(vpn, ppn, PTEFlags::from_bits(flags.bits).unwrap());
-    }
+    // ///添加一个新的映射区域
+    // pub fn map2physical(&mut self, vpn: VirtPageNum, ppn: PhysPageNum, flags: MapPermission) {
+    //     self.page_table.map(vpn, ppn, PTEFlags::from_bits(flags.bits).unwrap());
+    // }
     /// unmap a virtual page number and delete the maparea
     #[allow(unused)]
     pub fn unmap(&mut self, vpn_start: VirtPageNum, vpn_end: VirtPageNum) {
-        for vpn in vpn_start.0..vpn_end.0{
+        for vpn in vpn_start.0..vpn_end.0 {
             self.page_table.unmap(VirtPageNum(vpn));
         }
         let vpn_range = VPNRange::new(vpn_start, vpn_end);
@@ -279,6 +279,22 @@ impl MemorySet {
             !vpn_range.is_overlap(&area.vpn_range)
         });
     }
+    ///检查memory area是否和某个VPNRange有重叠
+    pub fn check_overlap(&self, vpn_start: VirtPageNum, vpn_end: VirtPageNum) -> bool {
+        let vpn_range = VPNRange::new(vpn_start, vpn_end);
+        self.areas
+            .iter()
+            .any(|area| vpn_range.is_overlap(&area.vpn_range))
+    }
+    // ///通过遍历pagetable检查是否完全覆盖了一个VPNRange，方法是利用maparea的dataframes这个btreemap查找是否有映射
+    // pub fn check_full_overlap(&self, vpn_start: VirtPageNum, vpn_end: VirtPageNum) -> bool {
+    //     for vpn in vpn_start.0..vpn_end.0 {
+    //         if !self.areas.data_frames.contains_key(&VirtPageNum(vpn)) {
+    //             return false;
+    //         }
+    //     }
+    //     true
+    // }
 }
 /// map area structure, controls a contiguous piece of virtual memory
 pub struct MapArea {

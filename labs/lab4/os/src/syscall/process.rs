@@ -5,7 +5,7 @@ use core::mem::{self, size_of};
 // use alloc::vec::Vec;
 use crate::{
     config::MAX_SYSCALL_NUM,
-    mm::{frame_alloc, translated_byte_buffer, MapPermission, VirtPageNum},
+    mm::{translated_byte_buffer, MapPermission, VirtAddr, VirtPageNum},
     syscall::TASK_INFO_LIST,
     task::{
         change_program_brk, current_user_token, exit_current_and_run_next,
@@ -130,9 +130,8 @@ pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
     let current = TASK_MANAGER.get_current_task();
     let task_info_list = TASK_INFO_LIST.exclusive_access();
     let current_task_info = &task_info_list[current];
-    let current_task_info_byte :[u8; mem::size_of::<TaskInfo>()]= unsafe {
-        mem::transmute(*current_task_info)
-    };
+    let current_task_info_byte: [u8; mem::size_of::<TaskInfo>()] =
+        unsafe { mem::transmute(*current_task_info) };
     // println!(
     //     "\nthe syscall time of time{}---\n",
     //     current_task_info.syscall_times[169]
@@ -190,13 +189,13 @@ pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
     //获取当前任务的taskcontrolblock
     let tcb = TASK_MANAGER.get_task(current);
     //找到start对应的vpn号以及start+len对应的vpn号
-    let start_vpn:VirtPageNum = _start.into();
-    let end_vpn:VirtPageNum = (_start+_len).into();
+    let start_va = VirtAddr::from(_start);
+    let end_va = VirtAddr::from(_start + _len);
+    let start_vpn: VirtPageNum = start_va.floor();
+    let end_vpn: VirtPageNum = end_va.ceil();
     //检查是否已经存在页映射了[start,start+len)这段虚拟地址,检查
-    for vpn in start_vpn.0..end_vpn.0{
-        if tcb.memory_set.translate(vpn.into()).is_some(){
-            return -1;
-        }
+    if tcb.memory_set.check_overlap(start_vpn,end_vpn){
+        return -1;
     }
     //完成了参数检查，接下来就是分配内存了,先把MapPermission由port确定了
     let mut map_perm = MapPermission::U;
@@ -209,18 +208,20 @@ pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
     if _port & 0b100 != 0 {
         map_perm |= MapPermission::X;
     }
-    //然后根据地址先插入我们的memory_set
-    tcb.memory_set.insert_framed_area(_start.into(),(_start+_len).into(),map_perm);
-    //接下来就是获取物理地址，然后映射到虚拟地址，写到tcb的pagetable里面，需要分配不止一个frame
-    for vpn in start_vpn.0..end_vpn.0{
-        if let Some(phy_frame_tracker) = frame_alloc(){
-            //分配成功,FrameTracker入到pagetable里面
-            tcb.memory_set.map2physical(vpn.into(), phy_frame_tracker.ppn, map_perm);
-        }else {
-            //分配失败
-            return -1;
-        }
-    }
+    //然后根据地址先插入我们的memory_set,这一步就完成了映射
+    //这里有个边界问题，比如len为4096，这个时候我们只需要分配一个整页，但是end_va取了ceil
+    tcb.memory_set
+        .insert_framed_area(start_va, end_va, map_perm);
+    // //接下来就是获取物理地址，然后映射到虚拟地址，写到tcb的pagetable里面，需要分配不止一个frame
+    // for vpn in start_vpn.0..end_vpn.0{
+    //     if let Some(phy_frame_tracker) = frame_alloc(){
+    //         //分配成功,FrameTracker入到pagetable里面
+    //         tcb.memory_set.map2physical(vpn.into(), phy_frame_tracker.ppn, map_perm);
+    //     }else {
+    //         //分配失败
+    //         return -1;
+    //     }
+    // }
     0
 }
 
@@ -240,11 +241,17 @@ pub fn sys_munmap(_start: usize, _len: usize) -> isize {
     //获取当前任务的taskcontrolblock
     let tcb = TASK_MANAGER.get_task(current);
     //找到start对应的vpn号以及start+len对应的vpn号
-    let start_vpn:VirtPageNum = _start.into();
-    let end_vpn:VirtPageNum = (_start+_len).into();
-    //检查是否已经存在页映射了[start,start+len)这段虚拟地址,检查
+    let start_va = VirtAddr::from(_start);
+    let end_va = VirtAddr::from(_start + _len);
+    let start_vpn: VirtPageNum = start_va.floor();
+    let end_vpn: VirtPageNum = end_va.ceil();
+    //检查是否已经存在页映射了[start,start+len)这段虚拟地址,需要完全的覆盖，不能只是检查有交集，需要查页表,检查
     for vpn in start_vpn.0..end_vpn.0{
-        if tcb.memory_set.translate(vpn.into()).is_none(){
+        if let Some(pet) = tcb.memory_set.translate(vpn.into()){
+            if !pet.is_valid(){
+                return -1;
+            }
+        }else{
             return -1;
         }
     }
