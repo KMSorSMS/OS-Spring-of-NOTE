@@ -39,52 +39,40 @@ const SYSCALL_WAITPID: usize = 260;
 const SYSCALL_SPAWN: usize = 400;
 /// taskinfo syscall
 const SYSCALL_TASK_INFO: usize = 410;
-/// syscall num
-const SYSCALL_TYPE_NUM: usize = 8;
 
-const SYSCALL_TYPE: [usize; SYSCALL_TYPE_NUM] = [
-    SYSCALL_WRITE,
-    SYSCALL_EXIT,
-    SYSCALL_YIELD,
-    SYSCALL_GET_TIME,
-    SYSCALL_SBRK,
-    SYSCALL_MUNMAP,
-    SYSCALL_MMAP,
-    SYSCALL_TASK_INFO,
-];
 mod fs;
 mod process;
+use alloc::collections::BTreeMap;
+use lazy_static::*;
+
+//建立两个全局变量，采取BTeeMap的数据结构存储任务的pid和信息的对应关系
+lazy_static! {
+    ///全局变量：INIT_TIME_LIST用于统计app的初次调度时间
+    pub static ref INIT_TIME_LIST: UPSafeCell<BTreeMap<usize,usize>> = unsafe {
+        UPSafeCell::new(BTreeMap::new())
+    };
+    ///全局变量TASK_INFO_LIST 用于记录每个任务的info
+    pub static ref TASK_INFO_LIST: UPSafeCell<BTreeMap<usize,TaskInfo>> = unsafe {
+        UPSafeCell::new(BTreeMap::new())
+    };
+}
+pub use process::TaskInfo;
 
 use fs::*;
 use process::*;
-use lazy_static::*;
-use crate::config::MAX_APP_NUM;
-use crate::sync::UPSafeCell;
 
-
-lazy_static! {
-    /// 全局变量：INIT_TIME_LIST用于统计app的初次调度时间
-    pub static ref INIT_TIME_LIST: UPSafeCell<[usize;MAX_APP_NUM]> = unsafe {
-        UPSafeCell::new([0usize;MAX_APP_NUM])
-    };
-    /// 全局变量 TASK_INFO_LIST 用于记录每个任务的内容
-    pub static ref TASK_INFO_LIST: UPSafeCell<[TaskInfo;MAX_APP_NUM]> = unsafe {
-        UPSafeCell::new([TaskInfo::new();MAX_APP_NUM])
-    };
-}
-
-use crate::task::TaskManager;
-use crate::timer::get_time_ms;
+use crate::{config::MAX_SYSCALL_NUM, sync::UPSafeCell, task::current_task, timer::get_time_ms};
 /// handle syscall exception with `syscall_id` and other arguments
 pub fn syscall(syscall_id: usize, args: [usize; 3]) -> isize {
-    let current = TASK_MANAGER.get_current_task();
+    //得到当前任务的pid号
+    let current = current_task().unwrap().pid.0; 
     let mut task_info_list = TASK_INFO_LIST.exclusive_access();
-    let current_task_info = &mut task_info_list[current];
+    let current_task_info = task_info_list.get_mut(&current).unwrap();
     // 先更新系统调用时间
     let init_time_list = INIT_TIME_LIST.exclusive_access();
-    current_task_info.set_time(init_time_list[current], get_time_ms());
+    current_task_info.set_time(*init_time_list.get(&current).unwrap(), get_time_ms());
     // 更新syscall调用,确保syscall在里面
-    if SYSCALL_TYPE.contains(&syscall_id) {
+    if syscall_id < MAX_SYSCALL_NUM {
         // if syscall_id == 169{
         //     println!("\ncurrent task is{} ",current);
         //     println!("\n--{}--\n", current_task_info.syscall_times[169])

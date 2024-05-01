@@ -23,3 +23,7 @@
 写在博客里面了：
 
 [rcore-lab5](https://liamy.clovy.top/article/OS_Tutorial/lab5)
+
+## 简答作业
+
+先留着，我担心实验做不完，时间太赶了

@@ -31,7 +31,6 @@ lazy_static! {
         Arc::new(unsafe { UPSafeCell::new(MemorySet::new_kernel()) });
 }
 /// address space
-// #[derive(Clone)]
 pub struct MemorySet {
     page_table: PageTable,
     areas: Vec<MapArea>,
@@ -254,6 +253,45 @@ impl MemorySet {
         }
         memory_set
     }
+    // /// 创建一个新的用于用户的地址空间
+    // pub fn new_user() -> Self{
+    //     let mut memory_set = Self::new_bare();
+    //     // map trampoline
+    //     memory_set.map_trampoline();
+    //     // map user stack with U flags
+    //     let user_stack_bottom = USER_STACK_SIZE;
+    //     let user_stack_top = user_stack_bottom + USER_STACK_SIZE;
+    //     memory_set.push(
+    //         MapArea::new(
+    //             user_stack_bottom.into(),
+    //             user_stack_top.into(),
+    //             MapType::Framed,
+    //             MapPermission::R | MapPermission::W | MapPermission::U,
+    //         ),
+    //         None,
+    //     );
+    //     // used in sbrk
+    //     memory_set.push(
+    //         MapArea::new(
+    //             user_stack_top.into(),
+    //             user_stack_top.into(),
+    //             MapType::Framed,
+    //             MapPermission::R | MapPermission::W | MapPermission::U,
+    //         ),
+    //         None,
+    //     );
+    //     // map TrapContext
+    //     memory_set.push(
+    //         MapArea::new(
+    //             TRAP_CONTEXT_BASE.into(),
+    //             TRAMPOLINE.into(),
+    //             MapType::Framed,
+    //             MapPermission::R | MapPermission::W,
+    //         ),
+    //         None,
+    //     );
+    //     memory_set
+    // }
     /// Change page table by writing satp CSR Register.
     pub fn activate(&self) {
         let satp = self.page_table.token();
@@ -301,10 +339,13 @@ impl MemorySet {
             false
         }
     }
-    // ///添加一个新的映射区域
-    // pub fn map2physical(&mut self, vpn: VirtPageNum, ppn: PhysPageNum, flags: MapPermission) {
-    //     self.page_table.map(vpn, ppn, PTEFlags::from_bits(flags.bits).unwrap());
-    // }
+    ///检查memory area是否和某个VPNRange有重叠
+    pub fn check_overlap(&self, vpn_start: VirtPageNum, vpn_end: VirtPageNum) -> bool {
+        let vpn_range = VPNRange::new(vpn_start, vpn_end);
+        self.areas
+            .iter()
+            .any(|area| vpn_range.is_overlap(&area.vpn_range))
+    }
     /// unmap a virtual page number and delete the maparea
     #[allow(unused)]
     pub fn unmap(&mut self, vpn_start: VirtPageNum, vpn_end: VirtPageNum) {
@@ -317,22 +358,6 @@ impl MemorySet {
             !vpn_range.is_overlap(&area.vpn_range)
         });
     }
-    ///检查memory area是否和某个VPNRange有重叠
-    pub fn check_overlap(&self, vpn_start: VirtPageNum, vpn_end: VirtPageNum) -> bool {
-        let vpn_range = VPNRange::new(vpn_start, vpn_end);
-        self.areas
-            .iter()
-            .any(|area| vpn_range.is_overlap(&area.vpn_range))
-    }
-    // ///通过遍历pagetable检查是否完全覆盖了一个VPNRange，方法是利用maparea的dataframes这个btreemap查找是否有映射
-    // pub fn check_full_overlap(&self, vpn_start: VirtPageNum, vpn_end: VirtPageNum) -> bool {
-    //     for vpn in vpn_start.0..vpn_end.0 {
-    //         if !self.areas.data_frames.contains_key(&VirtPageNum(vpn)) {
-    //             return false;
-    //         }
-    //     }
-    //     true
-    // }
 }
 /// map area structure, controls a contiguous piece of virtual memory
 pub struct MapArea {

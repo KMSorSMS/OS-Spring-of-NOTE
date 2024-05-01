@@ -1,7 +1,7 @@
 //! Types related to task management & Functions for completely changing TCB
 use super::TaskContext;
 use super::{kstack_alloc, pid_alloc, KernelStack, PidHandle};
-use crate::config::TRAP_CONTEXT_BASE;
+use crate::config::{BIG_STRIDE, DEFAULT_PRIORITY, TRAP_CONTEXT_BASE};
 use crate::mm::{MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE};
 use crate::sync::UPSafeCell;
 use crate::trap::{trap_handler, TrapContext};
@@ -12,7 +12,6 @@ use core::cell::RefMut;
 /// Task control block structure
 ///
 /// Directly save the contents that will not change during running
-// #[derive(Clone)]
 pub struct TaskControlBlock {
     // Immutable
     /// Process identifier
@@ -23,6 +22,10 @@ pub struct TaskControlBlock {
 
     /// Mutable
     inner: UPSafeCell<TaskControlBlockInner>,
+    /// the priority of the task
+    priority: UPSafeCell<isize>,
+    /// stride in stride algorithm
+    stride: UPSafeCell<isize>,
 }
 
 impl TaskControlBlock {
@@ -34,6 +37,31 @@ impl TaskControlBlock {
     pub fn get_user_token(&self) -> usize {
         let inner = self.inner_exclusive_access();
         inner.memory_set.token()
+    }
+    /// 设置优先级
+    pub fn set_priority(&self, priority: isize) {
+        let mut _priority = self.priority.exclusive_access();
+        *_priority = priority;
+    }
+    /// 设置stride
+    pub fn set_stride(&self, stride: isize) {
+        let mut _stride = self.stride.exclusive_access();
+        *_stride = stride;
+    }
+    /// 实现stride算法的pass操作，即stride += BIG_STRIDE / priority
+    pub fn pass(&self) {
+        let mut _stride = self.stride.exclusive_access();
+        let priority = self.priority.exclusive_access();
+        //这里考虑一下溢出，如果会超过isize的最大值，就不加了
+        if BIG_STRIDE / *priority < isize::MAX - *_stride {
+            *_stride += BIG_STRIDE / *priority;
+        }
+    }
+    /// 获取stride的大小
+    /// 用于在TaskManager中获取stride最小的任务
+    pub fn get_stride(&self) -> isize {
+        let stride = self.stride.exclusive_access();
+        *stride
     }
 }
 
@@ -121,6 +149,12 @@ impl TaskControlBlock {
                     program_brk: user_sp,
                 })
             },
+            priority: unsafe {
+                UPSafeCell::new(DEFAULT_PRIORITY)   
+            },
+            stride: unsafe {
+                UPSafeCell::new(0)
+            }
         };
         // prepare TrapContext in user space
         let trap_cx = task_control_block.inner_exclusive_access().get_trap_cx();
@@ -194,6 +228,12 @@ impl TaskControlBlock {
                     program_brk: parent_inner.program_brk,
                 })
             },
+            priority: unsafe {
+                UPSafeCell::new(DEFAULT_PRIORITY)   
+            },
+            stride: unsafe {
+                UPSafeCell::new(0)
+            }
         });
         // add child
         parent_inner.children.push(task_control_block.clone());
@@ -237,14 +277,47 @@ impl TaskControlBlock {
             None
         }
     }
-    ///get the control block of the task
-    pub fn get_control_block(&mut self) -> &'static mut Self {
-        unsafe{((self) as *mut Self).as_mut().unwrap()}
-    }
 }
 
+// ///构造一个函数spawn,用于创建一个新的进程，地址空间和内核栈都是新的
+// pub fn spawn(memory_set : MemorySet, entry_point: usize, user_sp: usize, kernel_stack_top: usize) -> Arc<TaskControlBlock> {
+//     // alloc a pid and a kernel stack in kernel space
+//     let pid_handle = pid_alloc();
+//     let kernel_stack = kstack_alloc();
+//     let task_control_block = Arc::new(TaskControlBlock {
+//         pid: pid_handle,
+//         kernel_stack,
+//         inner: unsafe {
+//             UPSafeCell::new(TaskControlBlockInner {
+//                 trap_cx_ppn: memory_set
+//                     .translate(VirtAddr::from(TRAP_CONTEXT_BASE).into())
+//                     .unwrap()
+//                     .ppn(),
+//                 base_size: user_sp,
+//                 task_cx: TaskContext::goto_trap_return(kernel_stack_top),
+//                 task_status: TaskStatus::Ready,
+//                 memory_set,
+//                 parent: None,
+//                 children: Vec::new(),
+//                 exit_code: 0,
+//                 heap_bottom: user_sp,
+//                 program_brk: user_sp,
+//             })
+//         },
+//     });
+//     // prepare TrapContext in user space
+//     let trap_cx = task_control_block.inner_exclusive_access().get_trap_cx();
+//     *trap_cx = TrapContext::app_init_context(
+//         entry_point,
+//         user_sp,
+//         KERNEL_SPACE.exclusive_access().token(),
+//         kernel_stack_top,
+//         trap_handler as usize,
+//     );
+//     task_control_block
+// }
+
 #[derive(Copy, Clone, PartialEq)]
-// 显示指定这个enum占据的空间
 /// task status: UnInit, Ready, Running, Exited
 pub enum TaskStatus {
     /// uninitialized

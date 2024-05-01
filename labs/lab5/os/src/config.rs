@@ -24,5 +24,7 @@ pub const CLOCK_FREQ: usize = 12500000;
 /// the physical memory end
 pub const MEMORY_END: usize = 0x88000000;
 
-/// the max number of apps in memory
-pub const MAX_APP_NUM: usize = 32;
+/// the Big_Stride in stride algorithm
+pub const BIG_STRIDE: isize =  4096;
+/// default priority of task
+pub const DEFAULT_PRIORITY: isize = 16;
