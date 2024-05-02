@@ -163,10 +163,22 @@ pub fn sys_linkat(_old_name: *const u8, _new_name: *const u8) -> isize {
 }
 
 /// YOUR JOB: Implement unlinkat.
+/// 这里和前面link的流程比较类似，删除操作模仿clear，
+/// 但是对于非最后一个文件，我们只是删除索引块，不去清空数据
 pub fn sys_unlinkat(_name: *const u8) -> isize {
     trace!(
         "kernel:pid[{}] sys_unlinkat NOT IMPLEMENTED",
         current_task().unwrap().pid.0
     );
-    -1
+    let token = current_user_token();
+    let name = translated_str(token, _name);
+    //因为我们只有根目录，所以这就是文件的所在目录
+    let root_inode = crate::fs::ROOT_INODE.clone();
+    //找到文件的inode
+    if let Some(inode) = root_inode.find(&name.as_str()) {
+        //删除文件
+        inode.unlink(&root_inode, &name)
+    } else {
+        -1
+    }
 }

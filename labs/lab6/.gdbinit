@@ -10,7 +10,9 @@ b rust_main
 # b src/task/processor.rs:67
 # b sys_spawn
 # b sys_waitpid
-b sys_fstat
+# b sys_fstat
+b sys_unlinkat
+
 define dss
   dashboard source -output /dev/pts/$arg0
   dashboard source -style height 0
