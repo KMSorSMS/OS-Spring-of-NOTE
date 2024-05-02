@@ -15,6 +15,8 @@ pub trait File: Send + Sync {
     fn read(&self, buf: UserBuffer) -> usize;
     /// write to the file from buf, return the number of bytes written
     fn write(&self, buf: UserBuffer) -> usize;
+    /// 获取stat
+    fn stat(&self) -> Stat;
 }
 
 /// The stat of a inode
@@ -45,6 +47,19 @@ bitflags! {
         const FILE  = 0o100000;
     }
 }
+///构造一个默认的stat用于标准输入输出流
+impl Default for Stat {
+    /// new a stat
+    fn default() -> Self {
+        Self {
+            dev: 0,
+            ino: 0,
+            mode: StatMode::NULL,
+            nlink: 0,
+            pad: [0; 7],
+        }
+    }
+}
 
-pub use inode::{list_apps, open_file, OSInode, OpenFlags};
+pub use inode::{list_apps, open_file, OSInode, OpenFlags, ROOT_INODE};
 pub use stdio::{Stdin, Stdout};

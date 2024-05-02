@@ -4,7 +4,7 @@
 //!
 //! `UPSafeCell<OSInodeInner>` -> `OSInode`: for static `ROOT_INODE`,we
 //! need to wrap `OSInodeInner` into `UPSafeCell`
-use super::File;
+use super::{File, Stat, StatMode};
 use crate::drivers::BLOCK_DEVICE;
 use crate::mm::UserBuffer;
 use crate::sync::UPSafeCell;
@@ -52,9 +52,34 @@ impl OSInode {
         }
         v
     }
+    /// 返回Stat信息
+    pub fn stat(&self) -> Stat {
+        let inner = self.inner.immut_access();
+        inner.stat()
+    }
 }
-
+impl OSInodeInner {
+    /// 返回Stat信息
+    pub fn stat(&self) -> Stat {
+        //通过read_disk_inode方法来得到文件类型信息（目录or file）
+        let stat_mode: StatMode = if self.inode.is_dir() {
+            StatMode::DIR
+        } else {
+            StatMode::FILE
+            
+        };
+        //需要查找有多少个硬链接
+        Stat {
+            dev: self.inode.get_block_id() as u64,
+            ino: self.inode.get_inode_id_by_inode() as u64,
+            mode: stat_mode,
+            nlink: self.inode.find_hard_link(&crate::fs::ROOT_INODE.clone()) as u32,
+            pad: [0; 7],
+        }
+    }
+}
 lazy_static! {
+    /// 根目录的inode
     pub static ref ROOT_INODE: Arc<Inode> = {
         let efs = EasyFileSystem::open(BLOCK_DEVICE.clone());
         Arc::new(EasyFileSystem::root_inode(&efs))
@@ -154,5 +179,10 @@ impl File for OSInode {
             total_write_size += write_size;
         }
         total_write_size
+    }
+    ///实现stat方法
+    fn stat(&self) -> Stat {
+        let inner = self.inner.immut_access();
+        inner.stat()
     }
 }

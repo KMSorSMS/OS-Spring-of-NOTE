@@ -59,7 +59,7 @@ $(KERNEL_BIN): kernel
 	@$(OBJCOPY) $(KERNEL_ELF) --strip-all -O binary $@
 
 fs-img: $(APPS)
-	@make -C ./user build TEST=$(TEST) CHAPTER=$(CHAPTER) BASE=$(BASE)
+	# @make -C ./user build TEST=$(TEST) CHAPTER=$(CHAPTER) BASE=$(BASE)
 	@rm -f $(FS_IMG)
 	@cd ./easy-fs-fuse && cargo run --release -- -s ../user/build/app/ -t ../user/target/riscv64gc-unknown-none-elf/release/
 
@@ -108,5 +108,17 @@ gdbserver: build
 
 gdbclient:
 	@riscv64-unknown-elf-gdb -ex 'file $(KERNEL_ELF)' -ex 'set arch riscv:rv64' -ex 'target remote localhost:1234'
+debug-fas:
+	@echo Platform: $(BOARD)
+	@echo MODE_ARG: $(MODE_ARG)
+	@cd ./os && cargo build $(MODE_ARG)
+	@cd ..
+	@tmux new-session -d \
+		"qemu-system-riscv64 -machine virt -nographic -bios $(BOOTLOADER) -device loader,file=$(KERNEL_BIN),addr=$(KERNEL_ENTRY_PA)\
+		-drive file=$(FS_IMG),if=none,format=raw,id=x0 \
+        -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 -s -S" && \
+		tmux split-window -h "RUST_GDB=/usr/bin/gdb-multiarch rust-gdb -ex 'file $(KERNEL_ELF)' -ex 'set arch riscv:rv64' -ex 'target extended-remote localhost:1234' -ex 'source ./.gdbinit' " && \
+		tmux -2 attach-session -d
+
 
 .PHONY: build env kernel clean disasm disasm-vim run-inner gdbserver gdbclient docker build_docker fmt fs-img
