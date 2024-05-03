@@ -293,7 +293,7 @@ impl<T: Clone+Copy+Default> DynamicMatrix<T> {
     /// 创建矩阵，初始化,弄得特别大
     pub fn new() -> Self {
         DynamicMatrix {
-            data: vec![vec![T::default();10];20],
+            data: vec![vec![T::default();30];30],
         }
     }
     ///取得第几行第几列的内容
