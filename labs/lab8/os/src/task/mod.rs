@@ -38,6 +38,7 @@ pub use processor::{
 };
 pub use signal::SignalFlags;
 pub use task::{TaskControlBlock, TaskStatus};
+pub use process::DynamicMatrix;
 
 /// Make current task suspended and switch to the next task
 pub fn suspend_current_and_run_next() {

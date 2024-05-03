@@ -12,6 +12,8 @@ pub trait Mutex: Sync + Send {
     fn lock(&self);
     /// Unlock the mutex
     fn unlock(&self);
+    /// 兼容信号量的情况， 返回是否是need，也就是是否要等待
+    fn is_need(&self) -> bool;
 }
 
 /// Spinlock Mutex struct
@@ -49,6 +51,10 @@ impl Mutex for MutexSpin {
         trace!("kernel: MutexSpin::unlock");
         let mut locked = self.locked.exclusive_access();
         *locked = false;
+    }
+    /// 兼容信号量的情况， 返回是否是need，也就是是否要等待,这里返回false
+    fn is_need(&self) -> bool {
+        false
     }
 }
 
@@ -101,5 +107,10 @@ impl Mutex for MutexBlocking {
         } else {
             mutex_inner.locked = false;
         }
+    }
+    /// 兼容信号量的情况， 返回是否是need，也就是是否要等待
+    fn is_need(&self) -> bool {
+        let inner = self.inner.exclusive_access();
+        inner.locked
     }
 }

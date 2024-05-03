@@ -52,4 +52,10 @@ impl Semaphore {
             block_current_and_run_next();
         }
     }
+    /// 返回是否count小于等于0，用于说明这次分配是应该给到need向量还是alloc向量
+    /// 用于需要死锁检测的时候
+    pub fn is_need(&self) -> bool{
+        let inner = self.inner.exclusive_access();
+        inner.count <= 0
+    }
 }

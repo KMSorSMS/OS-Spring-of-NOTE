@@ -105,13 +105,62 @@ mod fs;
 mod process;
 mod sync;
 mod thread;
-
+mod deadlock;
+ 
+use alloc::collections::BTreeMap;
 use fs::*;
 use process::*;
 use sync::*;
 use thread::*;
 
-use crate::fs::Stat;
+use crate::{fs::Stat, sync::UPSafeCell, task::DynamicMatrix};
+
+use lazy_static::*;
+
+lazy_static! {
+    ///创建一个全局变量BtreeMap,用于存放进程pid对应是否开启死锁
+    pub static ref ENABLE_DEADLOCK: UPSafeCell<BTreeMap<usize, bool>> =
+        unsafe { UPSafeCell::new(BTreeMap::new()) };
+
+
+    ///创建信号量的Available向量，这里每个Available向量是和一个进程绑定的,这个矩阵就是一个1*m的（1对应进程，m为资源数）
+    pub static ref SEM_AVAILABLE: UPSafeCell<BTreeMap<usize,DynamicMatrix<usize>>> =
+    unsafe{
+        UPSafeCell::new(BTreeMap::new())
+    };
+    /// 创建一个信号量的分配矩阵Allocation:表示每类资源已分配给每个线程的资源数
+    /// Allocation和进程绑定，为n*m矩阵(n对应线程，m对应资源类型数)
+    pub static ref SEM_ALLOCATION: UPSafeCell<BTreeMap<usize,DynamicMatrix<usize>>> =
+    unsafe{
+        UPSafeCell::new(BTreeMap::new())
+    };
+    /// 信号量的需求矩阵 Need：表示每个线程还需要的各类资源数量。
+    /// NEED和进程绑定，为n*m矩阵（n对应线程，m对应资源类型）
+    pub static ref SEM_NEED: UPSafeCell<BTreeMap<usize,DynamicMatrix<usize>>> =
+    unsafe{
+        UPSafeCell::new(BTreeMap::new())
+    };
+
+
+    ///创建互斥量的Available向量，这里每个Available向量是和一个进程绑定的,这个矩阵就是一个1*m的（1对应进程，m为资源数）
+    pub static ref MUTX_AVAILABLE: UPSafeCell<BTreeMap<usize,DynamicMatrix<usize>>> =
+    unsafe{
+        UPSafeCell::new(BTreeMap::new())
+    };
+    /// 创建一个互斥量的分配矩阵Allocation:表示每类资源已分配给每个线程的资源数
+    /// Allocation和进程绑定，为n*m矩阵(n对应线程，m对应资源类型数)
+    pub static ref MUTX_ALLOCATION: UPSafeCell<BTreeMap<usize,DynamicMatrix<usize>>> =
+    unsafe{
+        UPSafeCell::new(BTreeMap::new())
+    };
+    /// 互斥量的需求矩阵 Need：表示每个线程还需要的各类资源数量。
+    /// NEED和进程绑定，为n*m矩阵（n对应线程，m对应资源类型）
+    pub static ref MUTX_NEED: UPSafeCell<BTreeMap<usize,DynamicMatrix<usize>>> =
+    unsafe{
+        UPSafeCell::new(BTreeMap::new())
+    };
+}
+
 
 /// handle syscall exception with `syscall_id` and other arguments
 pub fn syscall(syscall_id: usize, args: [usize; 4]) -> isize {

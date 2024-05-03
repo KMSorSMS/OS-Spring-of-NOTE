@@ -283,3 +283,66 @@ impl ProcessControlBlock {
         self.pid.0
     }
 }
+///实现一个矩阵数据结构，用于死锁检测算法：
+#[derive(Clone)]
+pub struct DynamicMatrix<T> {
+    data: Vec<Vec<T>>,
+}
+
+impl<T: Clone+Copy+Default> DynamicMatrix<T> {
+    /// 创建矩阵，初始化,弄得特别大
+    pub fn new() -> Self {
+        DynamicMatrix {
+            data: vec![vec![T::default();10];20],
+        }
+    }
+    ///取得第几行第几列的内容
+    /// 这里进行智能实现，如果越界，那么会把矩阵扩大到刚好不越界,数据用T的默认值填充
+    pub fn get(&mut self, row: usize, col: usize) -> &T {
+        if row >= self.data.len() {
+            let mut new_row = Vec::new();
+            new_row.resize(self.data[0].len(), T::default());
+            self.data.resize(row + 1, new_row);
+        }
+        if col >= self.data[0].len() {
+            for row in self.data.iter_mut() {
+                row.resize(col + 1, T::default());
+            }
+        }
+        &self.data[row][col]
+    }
+    ///给第几行第几列的内容赋值
+    /// 同样，也需要智能实现，如果越界，那么会把矩阵扩大到刚好不越界,数据用T的默认值填充
+    pub fn set(&mut self, row: usize, col: usize, value: T) {
+        if row >= self.data.len() {
+            let mut new_row = Vec::new();
+            new_row.resize(self.data[0].len(), T::default());
+            self.data.resize(row + 1, new_row);
+        }
+        if col >= self.data[0].len() {
+            for row in self.data.iter_mut() {
+                row.resize(col + 1, T::default());
+            }
+        }
+        self.data[row][col] = value;
+    }
+    ///返回某一行元素,如果该行还没有元素，那么就扩充到刚好不越界，用数据T的默认值填充
+    pub fn get_row(&mut self, row: usize) -> &Vec<T> {
+        if row >= self.data.len() {
+            let mut new_row = Vec::new();
+            new_row.resize(self.data[0].len(), T::default());
+            //加入新的一行到data中
+            self.data.resize(row + 1, new_row);
+        }
+        &self.data[row]
+    }
+    ///返回向量行数对应着线程数
+    pub fn row_count(&self) -> usize {
+        self.data.len()
+    }
+    /// 返回一个迭代器遍历data
+    pub fn iter(&self) -> core::slice::Iter<Vec<T>> {
+        self.data.iter()
+    }
+}
+
