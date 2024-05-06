@@ -194,7 +194,9 @@ pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
     let start_vpn: VirtPageNum = start_va.floor();
     let end_vpn: VirtPageNum = end_va.ceil();
     //检查是否已经存在页映射了[start,start+len)这段虚拟地址,检查
+    println!("\n***check overlap");
     if tcb.memory_set.check_overlap(start_vpn,end_vpn){
+        println!("\n---***find overlap");
         return -1;
     }
     //完成了参数检查，接下来就是分配内存了,先把MapPermission由port确定了
@@ -210,6 +212,7 @@ pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
     }
     //然后根据地址先插入我们的memory_set,这一步就完成了映射
     //这里有个边界问题，比如len为4096，这个时候我们只需要分配一个整页，但是end_va取了ceil
+    println!("\n***in insert");
     tcb.memory_set
         .insert_framed_area(start_va, end_va, map_perm);
     // //接下来就是获取物理地址，然后映射到虚拟地址，写到tcb的pagetable里面，需要分配不止一个frame

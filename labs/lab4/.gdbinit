@@ -6,7 +6,9 @@ b rust_main
 # b src/syscall/process.rs:131
 # b src/syscall/mod.rs:82 if syscall_id == 222 || syscall_id == 215
 # ignore $bpnum 8
-b src/syscall/process.rs:233
+# b src/syscall/process.rs:197
+b sys_mmap
+ignore $bpnum 10
 
 define dss
   dashboard source -output /dev/pts/$arg0

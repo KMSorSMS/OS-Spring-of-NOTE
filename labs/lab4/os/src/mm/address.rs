@@ -269,10 +269,43 @@ where
         }
     }
 }
-///实现一个方法用于检测两个SimpleRange是否有交集
+impl<T> PartialEq for SimpleRange<T>
+where T: StepByOne + Copy + PartialEq + PartialOrd + Debug
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.l == other.l && self.r == other.r
+    }
+
+}
+
 impl SimpleRange<VirtPageNum> {
+    ///实现一个方法用于检测两个SimpleRange是否有交集
     pub fn is_overlap(&self, other: &SimpleRange<VirtPageNum>) -> bool {
         self.l < other.r && self.r > other.l
+    }
+    /// 实现取两个SimpleRange的交集
+    pub fn intersect(&self, other: &SimpleRange<VirtPageNum>) -> Option<SimpleRange<VirtPageNum>> {
+        if self.is_overlap(other) {
+            Some(SimpleRange::new(self.l.max(other.l), self.r.min(other.r)))
+        } else {
+            None
+        }
+    }
+    /// 实现取self的range减去other的range返回一个新的simpleRange
+    pub fn subtract(&self, other: &SimpleRange<VirtPageNum>) -> Option<SimpleRange<VirtPageNum>> {
+        if self.is_overlap(other) {
+            if self.r == other.r {
+                Some(SimpleRange::new(self.l, other.l))
+            } else {
+                Some(SimpleRange::new(other.r, self.r))
+            }
+        } else {
+            None
+        }
+    }
+    /// 判定两个SimpleRange是否相等
+    pub fn is_equal(&self, other: &SimpleRange<VirtPageNum>) -> bool {
+        self.l == other.l && self.r == other.r
     }
 }
 /// a simple range structure for virtual page number

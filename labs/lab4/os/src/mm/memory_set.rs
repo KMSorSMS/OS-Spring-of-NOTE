@@ -270,18 +270,34 @@ impl MemorySet {
     /// unmap a virtual page number and delete the maparea
     #[allow(unused)]
     pub fn unmap(&mut self, vpn_start: VirtPageNum, vpn_end: VirtPageNum) {
+      
+        let vpn_range = VPNRange::new(vpn_start, vpn_end);
+        let mut drop_areas = Vec::new();
+        for area in self.areas.iter_mut() {
+            if let Some(intersect_range) = area.vpn_range.intersect(&vpn_range) {
+                    //判定是否是相等的情况
+                    if area.vpn_range.is_equal(&intersect_range) {
+                        println!("\ndetect equal");
+                        //从self的areas中删除这个area,这里做记录
+                        drop_areas.push(intersect_range);
+                    } else {
+                        println!("\nchange_size");
+                        area.change_size(intersect_range);
+                    }
+                }
+        }
+        //删除drop_areas中的area
+        self.areas
+            .retain(|area| !drop_areas.contains(&area.vpn_range));
+        println!("\nfinish in 294");
         for vpn in vpn_start.0..vpn_end.0 {
             self.page_table.unmap(VirtPageNum(vpn));
         }
-        let vpn_range = VPNRange::new(vpn_start, vpn_end);
-        self.areas.retain(|area| {
-            //area的vpn_range是个迭代器，只需要判断[vpn_start,vpn_end]是否与vpn_range有交集即可
-            !vpn_range.is_overlap(&area.vpn_range)
-        });
     }
     ///检查memory area是否和某个VPNRange有重叠
     pub fn check_overlap(&self, vpn_start: VirtPageNum, vpn_end: VirtPageNum) -> bool {
         let vpn_range = VPNRange::new(vpn_start, vpn_end);
+        println!("\n***in check_overlap");
         self.areas
             .iter()
             .any(|area| vpn_range.is_overlap(&area.vpn_range))
@@ -388,6 +404,25 @@ impl MapArea {
             }
             current_vpn.step();
         }
+    }
+    // 改变maparea的大小，传入一个新的vpnrange（不一定包含，而是和原vpn相交），取交集，改变maparea的vpnrange以及去除data_frames中对应的映射
+    #[allow(unused)]
+    pub fn change_size(&mut self, new_range: VPNRange) {
+        let mut new_data_frames = BTreeMap::new();
+        //产生一个交集vpnrange才是我们需要去除的
+        let intersection = self.vpn_range.intersect(&new_range);
+        if let Some(intersection) = intersection {
+            //遍历交集，将data_frames中的映射去除，加入到新的，最后更新vpn_range和data_frames
+            for vpn in intersection {
+                if let Some(frame) = self.data_frames.remove(&vpn) {
+                    new_data_frames.insert(vpn, frame);
+                }
+            }
+            //更新vpn_range为原来的vpn_range减去交集
+            self.vpn_range = self.vpn_range.subtract(&intersection).unwrap();
+            self.data_frames = new_data_frames;
+        }
+        println!("\nfin chagesize ");
     }
 }
 
