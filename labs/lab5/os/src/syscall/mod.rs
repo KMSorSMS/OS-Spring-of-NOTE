@@ -65,7 +65,9 @@ use crate::{config::MAX_SYSCALL_NUM, sync::UPSafeCell, task::current_task, timer
 /// handle syscall exception with `syscall_id` and other arguments
 pub fn syscall(syscall_id: usize, args: [usize; 3]) -> isize {
     //得到当前任务的pid号
+    // let current_block = current_task().unwrap();
     let current = current_task().unwrap().pid.0; 
+    // drop(current_block);
     let mut task_info_list = TASK_INFO_LIST.exclusive_access();
     let current_task_info = task_info_list.get_mut(&current).unwrap();
     // 先更新系统调用时间
