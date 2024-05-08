@@ -24,7 +24,7 @@ pub fn update_rsc_down(
         //更新need表
         need_matrix.set(row, col, old_need + 1);
         //死锁检测
-        result = sem_detect_dead_lock(need_matrix.clone(), alloc_matrix.clone(), avai_matrix.clone(), col);
+        result = sem_detect_dead_lock(need_matrix.clone(), alloc_matrix.clone(), avai_matrix.clone());
         //如果发生死锁，恢复
         if result {
             need_matrix.set(row, col, old_need);
@@ -41,7 +41,7 @@ pub fn update_rsc_down(
         avai_matrix.set(0, col, old_available - 1);
         //死锁检测
         println!("\n--num in avi is{}",avai_matrix.get(0, col));
-        result = sem_detect_dead_lock(need_matrix.clone(), alloc_matrix.clone(), avai_matrix.clone(), col);
+        result = sem_detect_dead_lock(need_matrix.clone(), alloc_matrix.clone(), avai_matrix.clone());
         //如果发生死锁，恢复
         if result {
             alloc_matrix.set(row, col, old_alloc);
@@ -76,7 +76,6 @@ pub fn sem_detect_dead_lock(
     mut need: DynamicMatrix<usize>,
     mut alloc: DynamicMatrix<usize>,
     mut work: DynamicMatrix<usize>,
-    col: usize,
 ) -> bool {
     //先clone这三个指针指向的矩阵的内容，并构造finish集合，这里统一起见也构造成一个matrix，用0代表false：
     // let mut need: DynamicMatrix<usize> = need_matrix.clone();
@@ -95,6 +94,7 @@ pub fn sem_detect_dead_lock(
                 //加入的时候也是把该线程已经被alloc的所有资源加入
                 let need_row = need.get_row(row).clone();
                 let work_row = work.get_row(0).clone();
+                // println!("need row:{row} is {} ",need_row[]);
                 let mut can = true;
                 //比较能不能满足
                 for (need_rsc,work_rsc) in need_row.iter().zip(work_row.iter()) {
@@ -105,8 +105,9 @@ pub fn sem_detect_dead_lock(
                 }
                 if can{
                     //如果能满足，就把这个线程的资源释放
-                    for (alloc_rsc,work_rsc) in alloc.get_row(row).clone().iter().zip(work_row.iter()) {
-                        work.set(0, col, *work_rsc + *alloc_rsc);
+                    for (index, (alloc_rsc, work_rsc)) in alloc.get_row(row).clone().iter().zip(work_row.iter()).enumerate() {
+                        // Use the index here
+                        work.set(0, index, work_rsc + alloc_rsc);
                     }
                     //把这个线程的finish设为1
                     fin[row] = 1;
@@ -121,8 +122,9 @@ pub fn sem_detect_dead_lock(
     }
     //遍历fin[0]，如果有0，说明有线程没有满足条件，返回true
     for i in 0..thread_num {
-        println!("--the fin the val is{}",fin[i]);
+        // println!("--the fin the val is{}",fin[i]);
         if fin[i] == 0usize {
+            println!("***dead lock ");
             return true;
         }
     }
