@@ -263,6 +263,7 @@ impl Inode {
                     //找到了，将其删除
                     let new_dirent = DirEntry::empty();
                     root_inode.write_at(DIRENT_SZ * i, new_dirent.as_bytes(), &self.block_device);
+                    // root_inode.size -= 1;
                     break;
                 }
             }
