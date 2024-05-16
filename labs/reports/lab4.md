@@ -22,8 +22,44 @@
 
 写在博客里面了：
 
-[rcore-lab6](https://liamy.clovy.top/article/OS_Tutorial/lab6)
+[rcore-lab4](https://liamy.clovy.top/article/OS_Tutorial/lab6)
 
 ## 简答作业
 
-先留着，我担心实验做不完，时间太赶了
+## 1.在我们的easy-fs中，root inode起着什么作用？如果root inode中的内容损坏了，会发生什么？
+
+root inode存储了所有文件的inode的指针（对应的block_id）,我们查找文件的方式就是从root inode开始，根据名称查找对应的inode(核心是block_id,查找目录项是和查找文件一样，direct indirect1 indirect2直到找到或者遍历完)，从inode里面（分成direct indirect1 indirect2）找文件实体存储的block_id。
+
+如果root inode损坏了，可以说大部分的文件内容都找不到了，当然，严格来说，我们可以从索引块依次按照inode的大小一个个的翻找inode来找文件，但是这部分我们没有提供api，所以就用户层面来讲，是没有方法再找到文件了（损坏的root inode所造成的无法找到的目录项），
+
+所以root inode在我们的easy-fs的实现里面很重要，就是好比一本很大的书的目录（大到没有目录就很难看书），没了它，你很难找到对应的文件的内容。
+
+## 2.举出使用 pipe 的一个实际应用的例子。
+
+正好tip提到一个：
+
+cat 和 wc的配合：
+
+```shell
+ cat lab4.md | wc   
+```
+
+输出这里为（目前情况）：
+
+ 38      56    2500
+
+分别是 行数、单词数和字符数，
+
+将cat的文件内容字符串作为wc的输入从而统计文件内容的字数，是使用pipe("|"管道符)的好例子。
+
+还比如，我有时候想要把objdump的内容显示到文本编辑器，可以使用这个命令：
+
+```shell
+ riscv64-unknown-elf-objdump -D os/target/riscv64gc-unknown-none-elf/release/os  | code -       
+```
+
+这样objdump的内容就有高亮了，稍微解释一下：
+
+`code -` 是一个命令，用于在 Visual Studio Code 中打开一个新的无标题文件，并将输入（在这里是管道的输入）填充到这个新文件中。`-` 表示从标准输入读取内容。
+
+通过管道符"|"将objdump的输出作为code的标准输入
