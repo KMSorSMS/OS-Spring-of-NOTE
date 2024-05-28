@@ -1,3 +1,4 @@
+
 // use futures::executor::block_on;
 
 // async fn hello_world() {
@@ -48,7 +49,6 @@
 // use std::mem::size_of;
 // trait SomeTrait { }
 
-use ch4waker::main_ch4;
 
 // fn main() {
 //     println!("======== The size of different pointers in Rust: ========");
@@ -63,7 +63,12 @@ use ch4waker::main_ch4;
 //     println!("[&dyn Trait;4]:--{}", size_of::<[&dyn SomeTrait; 4]>());
 //     println!("[i32;4]:---------{}", size_of::<[i32; 4]>());
 // }
+use ch4waker::main_ch4;
+use ch5Genarator::main_ch5;
+
 mod ch4waker;
+mod ch5Genarator;
 fn main(){
     main_ch4();
+    main_ch5();
 }
