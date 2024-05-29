@@ -63,12 +63,27 @@
 //     println!("[&dyn Trait;4]:--{}", size_of::<[&dyn SomeTrait; 4]>());
 //     println!("[i32;4]:---------{}", size_of::<[i32; 4]>());
 // }
-use ch4waker::main_ch4;
-use ch5Genarator::main_ch5;
+#![feature(auto_traits, negative_impls)] // needed to implement `!Unpin`
 
-mod ch4waker;
-mod ch5Genarator;
+// use ch4waker::main_ch4;
+// use ch5Genarator::main_ch5;
+// use ch6_generator_bonus::main_ch6_bonus;
+// use ch6pin::main_ch6_stack;
+// use ch6pin_heap::main_ch6_heap;
+
+use ch7_imple_future::main_ch7_future;
+
+// mod ch4waker;
+// mod ch5Genarator;
+// mod ch6pin;
+// mod ch6pin_heap;
+// mod ch6_generator_bonus;
+mod ch7_imple_future;
 fn main(){
-    main_ch4();
-    main_ch5();
+    // main_ch4();
+    // main_ch5();
+    // main_ch6_stack();
+    // main_ch6_heap();
+    // main_ch6_bonus();
+    main_ch7_future();
 }
