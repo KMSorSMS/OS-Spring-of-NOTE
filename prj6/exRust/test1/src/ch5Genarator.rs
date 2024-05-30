@@ -1,3 +1,21 @@
+/*
+fn main() {
+    let a: i32 = 4;
+    let mut gen = move || {
+        println!("Hello");
+        yield a * 2;
+        println!("world!");
+    };
+
+    if let GeneratorState::Yielded(n) = gen.resume() {
+        println!("Got value {}", n);
+    }
+
+    if let GeneratorState::Complete(()) = gen.resume() {
+        ()
+    };
+}
+*/
 pub fn main_ch5() {
     let mut gen = GeneratorA::start(4);
 

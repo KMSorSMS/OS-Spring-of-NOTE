@@ -296,13 +296,17 @@ pub fn main_ch7_future() {
     // - the second is a timeout in seconds
     // - the third is an `id` to identify the task
     let future1 = Task::new(reactor.clone(), 1, 3);
-    let future2 = Task::new(reactor.clone(), 2, 3);
+    let future2 = Task::new(reactor.clone(), 2, 9);
 
     // an `async` block works the same way as an `async fn` in that it compiles
     // our code into a state machine, `yielding` at every `await` point.
     let fut1 = async {
+        let mut test_num = 1;
+        println!("before fut1 excute wait the test_num:{:?}", test_num);
+        test_num += 1;
         let val = future1.await;
         println!("Got {} at time: {:.2}.", val, start.elapsed().as_secs_f32());
+        println!("after fut1 excute wait the test_num:{:?}", test_num);
     };
 
     let fut2 = async {
