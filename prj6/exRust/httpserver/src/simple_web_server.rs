@@ -2,7 +2,7 @@ use std::io::{self, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::thread::sleep;
 // use std::time::Instant;
-
+#[allow(unused)]
 pub fn main_simple_server() {
     let listener = TcpListener::bind("localhost:3000").unwrap();
     loop {

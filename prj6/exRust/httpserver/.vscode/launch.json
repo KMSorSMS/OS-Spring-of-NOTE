@@ -7,15 +7,15 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'test1'",
+            "name": "Debug executable 'webserver'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=test1",
-                    "--package=test1"
+                    "--bin=httpserver",
+                    "--package=httpserver"
                 ],
                 "filter": {
-                    "name": "test1",
+                    "name": "httpserver",
                     "kind": "bin"
                 }
             },
@@ -25,16 +25,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'test1'",
+            "name": "Debug unit tests in executable 'httpserver'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=test1",
-                    "--package=test1"
+                    "--bin=httpserver",
+                    "--package=httpserver"
                 ],
                 "filter": {
-                    "name": "test1",
+                    "name": "httpserver",
                     "kind": "bin"
                 }
             },
