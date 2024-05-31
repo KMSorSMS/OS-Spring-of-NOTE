@@ -1,5 +1,9 @@
+use core::panic;
+use epoll::{ControlOptions::*, Event, Events};
+use std::collections::HashMap;
 use std::io::{self, Read, Write};
 use std::net::TcpListener;
+use std::os::fd::AsRawFd;
 // use std::time::Instant;
 
 enum ConnectionState {
@@ -13,37 +17,56 @@ enum ConnectionState {
     },
     Flush,
 }
-#[allow(unused)]
-pub fn main_nonblocking_server() {
+
+pub fn main_multiplex_server() {
+    let mut connections = HashMap::new();
+
+    let epoll = epoll::create(false).unwrap();
     let listener = TcpListener::bind("localhost:3000").unwrap();
     listener.set_nonblocking(true).unwrap();
-    let mut connections = Vec::new();
+    //add the listener to epoll
+    let event = Event::new(Events::EPOLLIN, listener.as_raw_fd() as _);
+    epoll::ctl(epoll, EPOLL_CTL_ADD, listener.as_raw_fd(), event).unwrap();
     loop {
         //计时
         // let start = Instant::now();
-        match listener.accept() {
-            Ok((connection, _)) => {
-                connection.set_nonblocking(true).unwrap();
-                let state = ConnectionState::Read {
-                    // 👈
-                    request: [0u8; 1024],
-                    read: 0,
-                };
-                connections.push((connection, state));
-            }
-            Err(e) if e.kind() == io::ErrorKind::WouldBlock => {}
-            Err(e) => panic!("{e}"),
-        };
-
+        let mut events = [Event::new(Events::empty(), 0); 1024];
+        let timeout = -1; // block forever, until something happens
+        let num_events = epoll::wait(epoll, timeout, &mut events).unwrap(); // 👈
         let mut completed = Vec::new(); // 👈
-        'next: for (i, (connection, state)) in connections.iter_mut().enumerate() {
+        'next: for event in &events[..num_events] {
+            let fd = event.data as i32;
+            // is the listener ready?
+            if fd == listener.as_raw_fd() {
+                //try accepting a connection
+                match listener.accept() {
+                    Ok((connection, _)) => {
+                        connection.set_nonblocking(true).unwrap();
+                        let fd = connection.as_raw_fd();
+                        // register the connection with epoll
+                        let event = Event::new(Events::EPOLLIN | Events::EPOLLOUT, fd as _);
+                        epoll::ctl(epoll, EPOLL_CTL_ADD, fd, event).unwrap();
+                        let state = ConnectionState::Read {
+                            request: [0u8; 1024],
+                            read: 0,
+                        };
+
+                        connections.insert(fd, (connection, state));
+                    }
+                    Err(e) if e.kind() == io::ErrorKind::WouldBlock => {}
+                    Err(e) => panic!("{e}"),
+                }
+                continue 'next;
+            }
+            // otherwise, a connection must be ready
+            let (connection, state) = connections.get_mut(&fd).unwrap();
             if let ConnectionState::Read { request, read } = state {
                 loop {
                     // try reading from the stream
                     match connection.read(&mut request[*read..]) {
                         Ok(0) => {
                             println!("client disconnected unexpectedly");
-                            completed.push(i);
+                            completed.push(fd);
                             continue 'next;
                         }
                         Ok(n) => {
@@ -74,18 +97,19 @@ pub fn main_nonblocking_server() {
                     "Connection: close\r\n\r\n",
                     "Hello world!\n"
                 );
-
+                // connection.read...
                 *state = ConnectionState::Write {
                     response: response.as_bytes(),
                     written: 0,
                 };
             }
+
             if let ConnectionState::Write { response, written } = state {
                 loop {
                     match connection.write(&response[*written..]) {
                         Ok(0) => {
                             println!("client disconnected unexpectedly");
-                            completed.push(i);
+                            completed.push(fd);
                             continue 'next;
                         }
                         Ok(n) => {
@@ -100,14 +124,14 @@ pub fn main_nonblocking_server() {
                         break;
                     }
                 }
-                // successfully wrote the response, try flushing next
                 *state = ConnectionState::Flush;
             }
 
             if let ConnectionState::Flush = state {
+                // connection.flush...
                 match connection.flush() {
                     Ok(_) => {
-                        completed.push(i); // 👈
+                        completed.push(fd); // 👈
                     }
                     Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
                         // not ready yet, move on to the next connection
@@ -117,70 +141,13 @@ pub fn main_nonblocking_server() {
                 }
             }
         }
-        // remove any connections that completed, iterating in reverse order
-        // to preserve the indices
-        for i in completed.into_iter().rev() {
-            connections.remove(i);
-        }
 
+        for fd in completed {
+            let (connection, _state) = connections.remove(&fd).unwrap();
+            // unregister from epoll
+            drop(connection);
+        }
         //计时
         // println!("time elapsed: {:?}", start.elapsed().as_secs_f32());
     }
 }
-
-// fn handle_connection(mut connection: TcpStream) -> io::Result<()> {
-//     let mut read = 0;
-//     let mut request = [0u8; 1024];
-
-//     loop {
-//         // try reading from the stream
-//         let num_bytes = connection.read(&mut request[read..])?;
-
-//         // the client disconnected
-//         if num_bytes == 0 {
-//             println!("client disconnected unexpectedly");
-//             return Ok(());
-//         }
-
-//         // keep track of how many bytes we've read
-//         read += num_bytes;
-//         // have we reached the end of the request?
-//         if request.get(read - 4..read) == Some(b"\r\n\r\n") {
-//             break;
-//         }
-//     }
-//     let request = String::from_utf8_lossy(&request[..read]);
-//     println!("{request}");
-
-//     // "Hello World!" in HTTP
-//     let response = concat!(
-//         "HTTP/1.1 200 OK\r\n",
-//         "Content-Length: 26\n",
-//         "Connection: close\r\n\r\n",
-//         "Hello world!---from liamy\n"
-//     );
-
-//     let mut written = 0;
-//     //停5s
-//     sleep(std::time::Duration::from_secs(5));
-
-//     loop {
-//         // write the remaining response bytes
-//         let num_bytes = connection.write(response[written..].as_bytes())?;
-
-//         // the client disconnected
-//         if num_bytes == 0 {
-//             println!("client disconnected unexpectedly");
-//             return Ok(());
-//         }
-
-//         written += num_bytes;
-
-//         // have we written the whole response yet?
-//         if written == response.len() {
-//             break;
-//         }
-//     }
-//     // flush the response
-//     connection.flush()
-// }
