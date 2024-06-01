@@ -31,6 +31,7 @@ impl Test {
         unsafe { &*(self.b) }
     }
 }
+#[allow(unused)]
 pub fn main_ch6_stack() {
     // test1 is safe to move before we initialize it
     let mut test1 = Test::new("test1");

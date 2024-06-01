@@ -17,7 +17,7 @@ enum ConnectionState {
     },
     Flush,
 }
-
+#[allow(unused)]
 pub fn main_multiplex_server() {
     let mut connections = HashMap::new();
 

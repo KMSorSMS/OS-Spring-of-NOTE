@@ -283,7 +283,7 @@ fn block_on<F: Future>(mut future: F) -> F::Output {
     val
 }
 
-
+#[allow(unused)]
 pub fn main_ch7_future() {
     // This is just to make it easier for us to see when our Future was resolved
     let start = Instant::now();

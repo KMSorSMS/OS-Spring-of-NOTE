@@ -75,11 +75,11 @@ use ch7_imple_future::main_ch7_future;
 
 // use ch8_imple_parker::main_ch8_future;
 
-// mod ch4waker;
+mod ch4waker;
 // mod ch5Genarator;
-// mod ch6pin;
-// mod ch6pin_heap;
-// mod ch6_generator_bonus;
+mod ch6pin;
+mod ch6pin_heap;
+mod ch6_generator_bonus;
 mod ch7_imple_future;
 // mod ch8_imple_parker;
 fn main(){
@@ -87,7 +87,7 @@ fn main(){
     // main_ch5();
     // main_ch6_stack();
     // main_ch6_heap();
-    // main_ch6_bonus();
-    main_ch7_future();
+    ch6_generator_bonus::main_ch6_bonus();
+    // main_ch7_future();
     // main_ch8_future();
 }

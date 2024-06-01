@@ -31,6 +31,7 @@ impl Test {
     }
 }
 
+#[allow(unused)]
 pub fn main_ch6_heap() {
     let test1 = Test::new("test1");
     let test2 = Test::new("test2");
