@@ -7,15 +7,15 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'test1'",
+            "name": "Debug executable 'future_200_line'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=test1",
-                    "--package=test1"
+                    "--bin=future_200_line",
+                    "--package=future_200_line"
                 ],
                 "filter": {
-                    "name": "test1",
+                    "name": "future_200_line",
                     "kind": "bin"
                 }
             },
@@ -25,16 +25,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'test1'",
+            "name": "Debug unit tests in executable 'future_200_line'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=test1",
-                    "--package=test1"
+                    "--bin=future_200_line",
+                    "--package=future_200_line"
                 ],
                 "filter": {
-                    "name": "test1",
+                    "name": "future_200_line",
                     "kind": "bin"
                 }
             },
