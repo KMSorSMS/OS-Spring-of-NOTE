@@ -107,6 +107,7 @@ impl Scheduler {
     }
 }
 // =================================above is the runtime we create============================================
+#[allow(unused)]
 pub fn main_sync_server() {
     SCHEDULER.spawn(Main::Start);
     SCHEDULER.run();
