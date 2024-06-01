@@ -71,7 +71,7 @@
 // use ch6pin::main_ch6_stack;
 // use ch6pin_heap::main_ch6_heap;
 
-use ch7_imple_future::main_ch7_future;
+// use ch7_imple_future::main_ch7_future;
 
 // use ch8_imple_parker::main_ch8_future;
 

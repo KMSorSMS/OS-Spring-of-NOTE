@@ -32,7 +32,7 @@ fn sub(s: &Data) -> i32 {
 fn mul(s: &Data) -> i32 {
     s.a * s.b
 }
-
+#[allow(unused)]
 pub fn main_ch4() {
     let mut data = Data {a: 3, b: 2};
     // vtable is like special purpose array of pointer-length types with a fixed
